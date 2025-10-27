@@ -1,0 +1,130 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: stock_code_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stockcode}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockcode123}
+      POSTGRES_DB: ${POSTGRES_DB:-stockcode}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stock_code_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stockcode}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: stock_code_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - stock_code_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/docker/Dockerfile.backend
+    container_name: stock_code_backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stockcode}:${POSTGRES_PASSWORD:-stockcode123}@postgres:5432/${POSTGRES_DB:-stockcode}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here-change-in-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - stock_code_network
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/docker/Dockerfile.frontend
+    container_name: stock_code_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - stock_code_network
+    command: npm run dev
+
+  # Celery Worker (Optional - for background tasks)
+  # celery_worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: ../infrastructure/docker/Dockerfile.backend
+  #   container_name: stock_code_celery
+  #   environment:
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-stockcode}:${POSTGRES_PASSWORD:-stockcode123}@postgres:5432/${POSTGRES_DB:-stockcode}
+  #     REDIS_URL: redis://redis:6379/0
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   networks:
+  #     - stock_code_network
+  #   command: celery -A batch.celery_app worker --loglevel=info
+
+  # pgAdmin (Optional - Database GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stock_code_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@stockcode.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "5050:5050"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - stock_code_network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
+
+networks:
+  stock_code_network:
+    driver: bridge

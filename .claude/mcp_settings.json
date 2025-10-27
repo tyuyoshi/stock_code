@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "serena": {
+      "command": "npx",
+      "args": ["-y", "@futahashi/serena"]
+    }
+  }
+}
