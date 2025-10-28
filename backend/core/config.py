@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     redis_url: Optional[str] = None
     
     # JWT
-    secret_key: str = "your-secret-key-here"  # Change in production
+    secret_key: str = "your-secret-key-here"  # TODO: Issue #30 - 本番環境では必ず変更（openssl rand -hex 32 で生成）
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 

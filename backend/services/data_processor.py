@@ -67,12 +67,12 @@ class DataProcessor:
             indicators['market_cap'] = market_cap
             
             # PER (Price to Earnings Ratio)
-            if financial_data.get('net_income'):
+            if financial_data.get('net_income') and shares_outstanding and shares_outstanding > 0:
                 eps = financial_data['net_income'] / shares_outstanding
                 indicators['per'] = stock_price / eps if eps > 0 else None
             
             # PBR (Price to Book Ratio)
-            if financial_data.get('shareholders_equity'):
+            if financial_data.get('shareholders_equity') and shares_outstanding and shares_outstanding > 0:
                 bps = financial_data['shareholders_equity'] / shares_outstanding
                 indicators['pbr'] = stock_price / bps if bps > 0 else None
             

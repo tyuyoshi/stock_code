@@ -13,9 +13,10 @@ app = FastAPI(
 )
 
 # CORS設定
+# TODO: Issue #30 - 本番環境では環境変数から特定のオリジンのみ許可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番環境では適切に設定
+    allow_origins=["*"],  # 開発環境のみ。本番では ["https://yourdomain.com"] のように特定
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
