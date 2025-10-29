@@ -118,6 +118,32 @@ npm run build           # Production build
 2. **Yahoo Finance**: Stock price data (via yfinance library)
 3. **JPX API**: Japan Exchange Group market data (optional)
 
+## Known Issues and TODOs
+
+### Critical Security Items (Must fix before production)
+- **CORS configuration** needs environment-specific settings (Issue #30)
+- **Secret keys** must be generated for production (Issue #30)
+- **Authentication system** not yet implemented (Issue #34)
+
+### Missing Core Features
+- **XBRL parser** for EDINET data extraction (Issue #33)
+- **Database migrations** with Alembic not configured (Issue #31)
+- **Test suite** implementation - currently ZERO coverage (Issue #32)
+- **Core API endpoints** for business logic (Issue #35)
+
+### Development Status
+- ✅ Initial setup phase completed
+- ✅ Core infrastructure in place  
+- ⚠️ Business logic implementation pending
+- ⚠️ Security hardening required
+- ⚠️ No tests implemented yet
+
+### Next Session Priority
+1. Fix security vulnerabilities (Issue #30)
+2. Implement test suite (Issue #32)
+3. Complete EDINET XBRL parser (Issue #33)
+4. Add authentication system (Issue #34)
+
 ## Troubleshooting
 
 - Database connection: Check `DATABASE_URL` in `.env`
