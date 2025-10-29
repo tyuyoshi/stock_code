@@ -1,0 +1,240 @@
+# ========================================
+# Environment Variables
+# ========================================
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# Virtual Environment
+venv/
+ENV/
+env/
+backend/venv/
+.venv/
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ========================================
+# Node.js / Next.js
+# ========================================
+node_modules/
+.next/
+out/
+.nuxt/
+.cache/
+
+# Production
+build/
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Testing
+coverage/
+*.lcov
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# ========================================
+# Docker
+# ========================================
+.dockerignore
+
+# ========================================
+# Database
+# ========================================
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+
+# PostgreSQL
+*.sql
+!migrations/*.sql
+
+# ========================================
+# GCP / Cloud
+# ========================================
+*-service-account.json
+*-credentials.json
+gcp-key.json
+.gcloudignore
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# ========================================
+# OS Files
+# ========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ========================================
+# Project Specific
+# ========================================
+data/
+tmp/
+temp/
+cache/
+downloads/
+exports/
+*.xlsx
+*.xls
+*.csv
+!sample-data/*.csv
+
+# Uploaded files
+uploads/
+media/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Session files
+sessions/
+
+# Secret files
+secrets/
+*.key
+*.pem
+*.crt
+
+# Log files
+*.log
+logs/
+
+# Development database
+dev.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Redis
+dump.rdb
+
+# ========================================
+# Documentation
+# ========================================
+site/
+_build/
+
+# ========================================
+# Temporary files
+# ========================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
