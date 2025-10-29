@@ -4,10 +4,12 @@ XBRL Parser for financial data extraction
 """
 import logging
 from typing import Dict, Any, Optional, List
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, date
-import xml.etree.ElementTree as ET
 from pathlib import Path
+# Use defusedxml to prevent XXE attacks
+from defusedxml.ElementTree import parse, fromstring
+import xml.etree.ElementTree as ET  # For register_namespace only
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,7 @@ class XBRLParser:
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """XBRLファイルを解析"""
         try:
-            tree = ET.parse(file_path)
+            tree = parse(file_path)
             self.root = tree.getroot()
             
             # ネームスペースを登録
@@ -72,17 +74,14 @@ class XBRLParser:
             
             return self._extract_financial_data()
             
-        except ET.ParseError as e:
-            logger.error(f"XML parsing error: {e}")
-            raise
         except Exception as e:
-            logger.error(f"XBRL parsing error: {e}")
+            logger.error(f"XML parsing error: {e}")
             raise
     
     def parse_content(self, xbrl_content: bytes) -> Dict[str, Any]:
         """XBRLコンテンツ（bytes）を解析"""
         try:
-            self.root = ET.fromstring(xbrl_content)
+            self.root = fromstring(xbrl_content)
             
             # ネームスペースを登録
             for prefix, uri in self.NAMESPACES.items():
@@ -90,9 +89,6 @@ class XBRLParser:
             
             return self._extract_financial_data()
             
-        except ET.ParseError as e:
-            logger.error(f"XML parsing error: {e}")
-            raise
         except Exception as e:
             logger.error(f"XBRL parsing error: {e}")
             raise
@@ -223,6 +219,16 @@ class XBRLParser:
         
         return cash_flow
     
+    def _safe_decimal_convert(self, text: str) -> Optional[Decimal]:
+        """安全な Decimal 変換"""
+        if not text or text.strip() == '':
+            return None
+        try:
+            return Decimal(text.strip())
+        except (ValueError, TypeError, InvalidOperation):
+            logger.warning(f"Invalid decimal value: {text}")
+            return None
+    
     def _get_financial_value(self, item_key: str, period_type: str = 'instant', period: str = 'current') -> Optional[Decimal]:
         """財務項目の値を取得"""
         xpath = self.FINANCIAL_ITEMS.get(item_key)
@@ -242,20 +248,19 @@ class XBRLParser:
                 
                 # 期間指定がある場合（current/prior）
                 if period_type == 'duration' and period:
-                    # 簡単な期間判定ロジック（実際にはより複雑な判定が必要）
+                    # 動的な期間判定ロジック
                     end_date = context_info.get('end_date', '')
-                    if period == 'current' and '2024' not in end_date:
+                    current_year = datetime.now().year
+                    
+                    if period == 'current' and str(current_year) not in end_date:
                         continue
-                    elif period == 'prior' and '2023' not in end_date:
+                    elif period == 'prior' and str(current_year - 1) not in end_date:
                         continue
                 
                 # 値を取得
-                try:
-                    value = Decimal(element.text)
+                value = self._safe_decimal_convert(element.text)
+                if value is not None:
                     return value
-                except (ValueError, TypeError):
-                    logger.warning(f"Invalid value for {item_key}: {element.text}")
-                    continue
         
         return None
 
