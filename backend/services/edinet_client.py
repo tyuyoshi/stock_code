@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 class EDINETClient:
     """Client for EDINET API"""
 
-    BASE_URL = "https://disclosure.edinet-fsa.go.jp/api/v2"
+    # 正しい公開APIエンドポイント
+    BASE_URL = "https://disclosure2.edinet-fsa.go.jp/api/v2"
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
@@ -54,9 +55,14 @@ class EDINETClient:
     
     def parse_xbrl(self, xbrl_content: bytes) -> Dict[str, Any]:
         """Parse XBRL content to extract financial data"""
-        # TODO: Implement XBRL parsing logic
-        # This would typically use libraries like python-xbrl or arelle
-        pass
+        from .xbrl_parser import XBRLParser
+        
+        try:
+            parser = XBRLParser()
+            return parser.parse_content(xbrl_content)
+        except Exception as e:
+            logger.error(f"XBRL parsing failed: {e}")
+            raise
     
     def extract_financial_data(self, doc_id: str) -> Dict[str, Any]:
         """Extract financial data from a document"""

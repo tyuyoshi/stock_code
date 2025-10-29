@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbrl xmlns="http://www.xbrl.org/2003/instance"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:jp-gaap="http://info.edinet-fsa.go.jp/jp/fr/gaap/o/rt/"
+      xmlns:jpdei="http://info.edinet-fsa.go.jp/jp/fr/gaap/o/dei/"
+      xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+      xmlns:link="http://www.xbrl.org/2003/linkbase"
+      xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <!-- 企業情報 -->
+  <context id="CurrentAsOf">
+    <entity>
+      <identifier scheme="http://info.edinet-fsa.go.jp">E12345-000</identifier>
+    </entity>
+    <period>
+      <instant>2024-03-31</instant>
+    </period>
+  </context>
+
+  <context id="CurrentYear">
+    <entity>
+      <identifier scheme="http://info.edinet-fsa.go.jp">E12345-000</identifier>
+    </entity>
+    <period>
+      <startDate>2023-04-01</startDate>
+      <endDate>2024-03-31</endDate>
+    </period>
+  </context>
+
+  <context id="PriorYear">
+    <entity>
+      <identifier scheme="http://info.edinet-fsa.go.jp">E12345-000</identifier>
+    </entity>
+    <period>
+      <startDate>2022-04-01</startDate>
+      <endDate>2023-03-31</endDate>
+    </period>
+  </context>
+
+  <!-- 通貨単位 -->
+  <unit id="JPY">
+    <measure>iso4217:JPY</measure>
+  </unit>
+
+  <!-- 企業識別情報 -->
+  <jpdei:CompanyNameInJapanese contextRef="CurrentAsOf">サンプル株式会社</jpdei:CompanyNameInJapanese>
+  <jpdei:CompanyNameInEnglish contextRef="CurrentAsOf">Sample Corporation</jpdei:CompanyNameInEnglish>
+  <jpdei:SecuritiesCode contextRef="CurrentAsOf">1234</jpdei:SecuritiesCode>
+
+  <!-- 貸借対照表 (Balance Sheet) -->
+  <!-- 資産の部 -->
+  <jp-gaap:Assets contextRef="CurrentAsOf" unitRef="JPY">500000000000</jp-gaap:Assets>
+  <jp-gaap:CurrentAssets contextRef="CurrentAsOf" unitRef="JPY">200000000000</jp-gaap:CurrentAssets>
+  <jp-gaap:NoncurrentAssets contextRef="CurrentAsOf" unitRef="JPY">300000000000</jp-gaap:NoncurrentAssets>
+
+  <!-- 負債の部 -->
+  <jp-gaap:Liabilities contextRef="CurrentAsOf" unitRef="JPY">300000000000</jp-gaap:Liabilities>
+  <jp-gaap:CurrentLiabilities contextRef="CurrentAsOf" unitRef="JPY">150000000000</jp-gaap:CurrentLiabilities>
+  <jp-gaap:NoncurrentLiabilities contextRef="CurrentAsOf" unitRef="JPY">150000000000</jp-gaap:NoncurrentLiabilities>
+
+  <!-- 純資産の部 -->
+  <jp-gaap:NetAssets contextRef="CurrentAsOf" unitRef="JPY">200000000000</jp-gaap:NetAssets>
+  <jp-gaap:ShareholdersEquity contextRef="CurrentAsOf" unitRef="JPY">180000000000</jp-gaap:ShareholdersEquity>
+
+  <!-- 損益計算書 (P&L) -->
+  <!-- 売上高 -->
+  <jp-gaap:NetSales contextRef="CurrentYear" unitRef="JPY">800000000000</jp-gaap:NetSales>
+  <jp-gaap:NetSales contextRef="PriorYear" unitRef="JPY">750000000000</jp-gaap:NetSales>
+
+  <!-- 売上原価 -->
+  <jp-gaap:CostOfSales contextRef="CurrentYear" unitRef="JPY">600000000000</jp-gaap:CostOfSales>
+  <jp-gaap:CostOfSales contextRef="PriorYear" unitRef="JPY">570000000000</jp-gaap:CostOfSales>
+
+  <!-- 売上総利益 -->
+  <jp-gaap:GrossProfit contextRef="CurrentYear" unitRef="JPY">200000000000</jp-gaap:GrossProfit>
+  <jp-gaap:GrossProfit contextRef="PriorYear" unitRef="JPY">180000000000</jp-gaap:GrossProfit>
+
+  <!-- 営業利益 -->
+  <jp-gaap:OperatingIncome contextRef="CurrentYear" unitRef="JPY">100000000000</jp-gaap:OperatingIncome>
+  <jp-gaap:OperatingIncome contextRef="PriorYear" unitRef="JPY">90000000000</jp-gaap:OperatingIncome>
+
+  <!-- 純利益 -->
+  <jp-gaap:NetIncome contextRef="CurrentYear" unitRef="JPY">60000000000</jp-gaap:NetIncome>
+  <jp-gaap:NetIncome contextRef="PriorYear" unitRef="JPY">55000000000</jp-gaap:NetIncome>
+
+  <!-- キャッシュフロー計算書 -->
+  <!-- 営業活動によるキャッシュフロー -->
+  <jp-gaap:CashFlowsFromOperatingActivities contextRef="CurrentYear" unitRef="JPY">80000000000</jp-gaap:CashFlowsFromOperatingActivities>
+  <jp-gaap:CashFlowsFromOperatingActivities contextRef="PriorYear" unitRef="JPY">75000000000</jp-gaap:CashFlowsFromOperatingActivities>
+
+  <!-- 投資活動によるキャッシュフロー -->
+  <jp-gaap:CashFlowsFromInvestingActivities contextRef="CurrentYear" unitRef="JPY">-30000000000</jp-gaap:CashFlowsFromInvestingActivities>
+  <jp-gaap:CashFlowsFromInvestingActivities contextRef="PriorYear" unitRef="JPY">-25000000000</jp-gaap:CashFlowsFromInvestingActivities>
+
+  <!-- 財務活動によるキャッシュフロー -->
+  <jp-gaap:CashFlowsFromFinancingActivities contextRef="CurrentYear" unitRef="JPY">-20000000000</jp-gaap:CashFlowsFromFinancingActivities>
+  <jp-gaap:CashFlowsFromFinancingActivities contextRef="PriorYear" unitRef="JPY">-15000000000</jp-gaap:CashFlowsFromFinancingActivities>
+
+</xbrl>
