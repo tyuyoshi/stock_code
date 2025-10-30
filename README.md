@@ -1,16 +1,21 @@
 # Stock Code - 企業分析SaaSプラットフォーム
 
-> ⚠️ **開発ステータス**: 現在は開発環境向けの初期セットアップです。本番環境での使用前に、セキュリティ設定（Issue #30）とテストの実装（Issue #32）が必要です。
+> ⚠️ **開発ステータス**: EDINET API連携とXBRL解析機能が完成（Issue #6 ✅）。次は財務指標計算エンジン（Issue #13）の実装予定。本番環境での使用前に、セキュリティ設定（Issue #30）とテストの実装（Issue #32）が必要です。
 
 日本上場企業の財務データを収集・分析・可視化するプラットフォームです。
 EDINET APIやYahoo Financeからデータを取得し、投資判断に必要な各種指標を自動計算・提供します。
 
 ## 🚀 主な機能
 
-- 📊 **財務データ分析**: BS/PL/CFの詳細分析
+### ✅ 実装済み
+- 📊 **EDINET API連携**: 有価証券報告書の自動取得
+- 🔍 **XBRL Parser**: 財務データの自動抽出（BS/PL/CF）
+- 📊 **基本財務指標**: ROE、自己資本比率、営業利益率の計算
+
+### 🔄 実装予定
 - 📈 **株価チャート**: リアルタイム株価情報とテクニカル指標
 - 🔍 **スクリーニング**: 複数条件での企業絞り込み
-- 📊 **財務指標計算**: PER, PBR, ROE, ROA等の自動計算
+- 📊 **高度な財務指標**: PER, PBR, ROA等の包括的計算
 - 🆚 **企業比較**: 複数企業の横断的分析
 - 📄 **データエクスポート**: CSV/Excel形式でのデータ出力
 
@@ -81,7 +86,7 @@ cp .env.example .env
 ### 4. Docker Composeで起動
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 5. アクセス
@@ -92,8 +97,30 @@ docker-compose up -d
 
 ## 📝 開発
 
-### Backend開発
+### 初期セットアップ手順
 
+#### 1. 環境準備
+```bash
+# プロジェクトルートで
+cp .env.example .env
+# .envファイルを適切に設定してください
+```
+
+#### 2. Dockerを使った開発（推奨）
+```bash
+# 全サービス起動
+docker-compose up -d
+
+# ログ確認
+docker-compose logs -f
+
+# サービス停止
+docker-compose down
+```
+
+#### 3. ローカル開発（Docker不使用）
+
+**Backend開発**
 ```bash
 cd backend
 
@@ -104,6 +131,10 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # 依存関係のインストール
 pip install -r requirements.txt
 
+# Alembic初期化（初回のみ）
+alembic init alembic
+# ※ alembic/env.py の設定が必要です（後述）
+
 # データベースマイグレーション
 alembic upgrade head
 
@@ -111,7 +142,24 @@ alembic upgrade head
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend開発
+**Alembic設定のトラブルシューティング**
+
+`alembic upgrade head`でエラーが出る場合：
+
+1. `alembic init alembic`を実行してalembic.iniを作成
+2. `alembic/env.py`でデータベースURL設定：
+   ```python
+   # 環境変数からDATABASE_URLを読み取るよう設定
+   config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+   ```
+3. モデルのインポート設定：
+   ```python
+   # target_metadataにモデルのmetadataを設定
+   from models import Base
+   target_metadata = Base.metadata
+   ```
+
+#### Frontend開発
 
 ```bash
 cd frontend
@@ -128,8 +176,32 @@ npm run build
 # 型チェック
 npm run type-check
 
-# Lint
+# Lint & フォーマット
 npm run lint
+npm run format
+```
+
+### 開発時のコマンド
+
+#### コード品質チェック（Backend）
+
+```bash
+cd backend
+black .                  # コードフォーマット
+flake8                   # リント
+mypy .                   # 型チェック
+pytest                   # テスト実行
+pytest --cov            # カバレッジ付きテスト
+```
+
+#### コード品質チェック（Frontend）
+
+```bash
+cd frontend
+npm run lint             # ESLint
+npm run type-check       # TypeScript型チェック
+npm run format           # Prettier
+npm run build            # 本番ビルド確認
 ```
 
 ## 🧪 テスト

@@ -49,6 +49,10 @@ docker-compose logs -f  # View logs
 # Backend (without Docker)
 cd backend
 source venv/bin/activate
+# Alembic初期化（初回のみ）
+alembic init alembic
+# データベースマイグレーション
+alembic upgrade head
 uvicorn api.main:app --reload
 
 # Frontend (without Docker)
@@ -74,11 +78,16 @@ npm run build           # Production build
 
 ## Key Features Implemented
 
-1. **Data Collection**: EDINET API integration, Yahoo Finance data fetching
-2. **Data Processing**: Financial indicator calculations (PER, PBR, ROE, etc.)
-3. **API Endpoints**: Company search, screening, comparison, data export
-4. **Frontend**: Company details, screening interface, chart visualization
-5. **Batch Jobs**: Daily and quarterly data updates
+1. **Data Collection**: 
+   - ✅ **EDINET API integration** - Japanese financial reports (Issue #6)
+   - ✅ **XBRL Parser** - Financial data extraction from EDINET (Issue #6)
+   - 🔄 Yahoo Finance data fetching (planned)
+2. **Data Processing**: 
+   - ✅ **Basic financial indicators** - ROE, equity ratio, operating margin (Issue #6)
+   - 🔄 Advanced financial indicator calculations (Issue #13)
+3. **API Endpoints**: Company search, screening, comparison, data export (planned)
+4. **Frontend**: Company details, screening interface, chart visualization (planned)
+5. **Batch Jobs**: Daily and quarterly data updates (planned)
 
 ## Development Guidelines
 
@@ -126,27 +135,56 @@ npm run build           # Production build
 - **Authentication system** not yet implemented (Issue #34)
 
 ### Missing Core Features
-- **XBRL parser** for EDINET data extraction (Issue #33)
-- **Database migrations** with Alembic not configured (Issue #31)
+- **Database migrations** with Alembic - setup method documented, needs env.py configuration (Issue #31)
 - **Test suite** implementation - currently ZERO coverage (Issue #32)
+- **Financial indicators calculation engine** - advanced metrics and ratios (Issue #13)
 - **Core API endpoints** for business logic (Issue #35)
+
+### Performance & Quality Improvements (New Issues)
+- **Test coverage expansion** - unit tests, error cases, edge cases (Issue #46)
+- **Performance optimization** - streaming, caching, memory usage (Issue #47)  
+- **Error handling standardization** - retry logic, rate limiting (Issue #48)
 
 ### Development Status
 - ✅ Initial setup phase completed
 - ✅ Core infrastructure in place  
-- ⚠️ Business logic implementation pending
-- ⚠️ Security hardening required
-- ⚠️ No tests implemented yet
+- ✅ **EDINET API & XBRL Parser implemented** (Issue #6)
+- ✅ **Basic financial indicators** calculation working
+- ⚠️ Advanced business logic implementation pending
+- ⚠️ Security hardening required (Issue #30)
+- ⚠️ Comprehensive test suite needed (Issue #32)
 
 ### Next Session Priority
-1. Fix security vulnerabilities (Issue #30)
-2. Implement test suite (Issue #32)
-3. Complete EDINET XBRL parser (Issue #33)
-4. Add authentication system (Issue #34)
+1. **Financial indicators calculation engine** (Issue #13) - High impact, builds on Issue #6
+2. **Database migration system** (Issue #31) - Infrastructure foundation
+3. **Daily batch jobs** (Issue #9) - Data automation, unblocked by Issue #6
+4. **Test suite implementation** (Issue #32) - Quality assurance
 
 ## Troubleshooting
 
-- Database connection: Check `DATABASE_URL` in `.env`
-- Port conflicts: Use `lsof -i :PORT` to find conflicts
-- Docker issues: Run `docker-compose down -v` and rebuild
-- API errors: Check logs with `docker-compose logs backend`
+### Common Issues
+
+- **Database connection**: Check `DATABASE_URL` in `.env`
+- **Port conflicts**: Use `lsof -i :PORT` to find conflicts
+- **Docker issues**: Run `docker-compose down -v` and rebuild
+- **API errors**: Check logs with `docker-compose logs backend`
+
+### Alembic Setup Issues
+
+**Error: "No config file 'alembic.ini' found"**
+```bash
+cd backend
+alembic init alembic
+```
+
+**After initialization, configure `alembic/env.py`:**
+1. Set database URL from environment:
+```python
+config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+```
+
+2. Import and set model metadata:
+```python
+from models import Base
+target_metadata = Base.metadata
+```
