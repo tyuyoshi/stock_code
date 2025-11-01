@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from core.config import settings
 from core.middleware import SecurityHeadersMiddleware, RequestSizeMiddleware
-from core.rate_limiter import limiter, custom_rate_limit_exceeded_handler
+from core.rate_limiter import limiter, custom_rate_limit_exceeded_handler, RateLimits
 
 app = FastAPI(
     title="Stock Code API",
@@ -41,14 +41,14 @@ app.add_middleware(RequestSizeMiddleware)
 
 
 @app.get("/")
-@limiter.limit("100/minute")
+@limiter.limit(RateLimits.STANDARD)
 async def root(request: Request):
     """Root endpoint"""
     return {"message": "Stock Code API", "version": "0.1.0"}
 
 
 @app.head("/")
-@limiter.limit("100/minute")
+@limiter.limit(RateLimits.STANDARD)
 async def root_head(request: Request):
     """Root endpoint for HEAD requests"""
     return {"message": "Stock Code API", "version": "0.1.0"}
