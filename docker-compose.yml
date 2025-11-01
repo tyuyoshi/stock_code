@@ -47,8 +47,26 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-stockcode}:${POSTGRES_PASSWORD:-stockcode123}@postgres:5432/${POSTGRES_DB:-stockcode}
       REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: development
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-here-change-in-production}
+      # CORS settings
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
+      CORS_ALLOW_METHODS: ${CORS_ALLOW_METHODS:-GET,POST,PUT,DELETE,OPTIONS}
+      CORS_ALLOW_HEADERS: ${CORS_ALLOW_HEADERS:-*}
+      # JWT settings
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      # Rate limiting
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-60}
+      API_RATE_LIMIT_PER_HOUR: ${API_RATE_LIMIT_PER_HOUR:-1000}
+      API_RATE_LIMIT_PER_DAY: ${API_RATE_LIMIT_PER_DAY:-10000}
+      # Security headers
+      SECURITY_HEADERS_ENABLED: ${SECURITY_HEADERS_ENABLED:-true}
+      # API Keys (if needed)
+      EDINET_API_KEY: ${EDINET_API_KEY:-}
+      JPX_API_KEY: ${JPX_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:
