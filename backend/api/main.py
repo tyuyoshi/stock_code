@@ -41,18 +41,33 @@ app.add_middleware(RequestSizeMiddleware)
 
 
 @app.get("/")
-@app.head("/")
 @limiter.limit("100/minute")
 async def root(request: Request):
     """Root endpoint"""
     return {"message": "Stock Code API", "version": "0.1.0"}
 
 
+@app.head("/")
+@limiter.limit("100/minute")
+async def root_head(request: Request):
+    """Root endpoint for HEAD requests"""
+    return {"message": "Stock Code API", "version": "0.1.0"}
+
+
 @app.get("/health")
+@limiter.exempt
+async def health_check(request: Request):
+    """Health check endpoint - exempt from rate limiting"""
+    return JSONResponse(
+        status_code=200,
+        content={"status": "healthy", "service": "stock-code-api"},
+    )
+
+
 @app.head("/health")
 @limiter.exempt
-async def health_check():
-    """Health check endpoint - exempt from rate limiting"""
+async def health_check_head(request: Request):
+    """Health check endpoint for HEAD requests - exempt from rate limiting"""
     return JSONResponse(
         status_code=200,
         content={"status": "healthy", "service": "stock-code-api"},

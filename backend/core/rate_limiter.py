@@ -1,5 +1,6 @@
 """Rate limiting configuration for API endpoints"""
 
+import logging
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -7,6 +8,8 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def rate_limit_key_func(request: Request) -> str:
@@ -21,6 +24,11 @@ def rate_limit_key_func(request: Request) -> str:
 
 
 # Create limiter instance
+# Enable rate limiting for non-development environments
+rate_limit_enabled = settings.environment.lower() != "development"
+logger.info(f"Rate limiting enabled: {rate_limit_enabled} (environment: {settings.environment})")
+print(f"[RATE LIMITER] Enabled: {rate_limit_enabled}, Environment: {settings.environment}, Limits: {settings.api_rate_limit_per_minute}/min")
+
 limiter = Limiter(
     key_func=rate_limit_key_func,
     default_limits=[
@@ -28,7 +36,7 @@ limiter = Limiter(
         f"{settings.api_rate_limit_per_hour}/hour",
         f"{settings.api_rate_limit_per_minute}/minute"
     ],
-    enabled=settings.environment != "development"  # Disable in development
+    enabled=rate_limit_enabled
 )
 
 
