@@ -18,7 +18,7 @@ scipy==1.11.4
 # API clients
 requests==2.31.0
 yfinance==0.2.33
-aiohttp==3.9.1
+aiohttp==3.12.14
 
 # Authentication
 python-jose[cryptography]==3.5.0
