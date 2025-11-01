@@ -27,7 +27,17 @@ def rate_limit_key_func(request: Request) -> str:
 # Enable rate limiting for non-development environments
 rate_limit_enabled = settings.environment.lower() != "development"
 logger.info(f"Rate limiting enabled: {rate_limit_enabled} (environment: {settings.environment})")
-print(f"[RATE LIMITER] Enabled: {rate_limit_enabled}, Environment: {settings.environment}, Limits: {settings.api_rate_limit_per_minute}/min")
+
+# Use Redis storage if Redis URL is configured, otherwise use in-memory storage
+storage_uri = None
+if settings.redis_url and rate_limit_enabled:
+    # Use Redis for storage to persist rate limit data across restarts
+    storage_uri = settings.redis_url
+    logger.info(f"Using Redis storage for rate limiting: {storage_uri}")
+else:
+    logger.info("Using in-memory storage for rate limiting")
+
+print(f"[RATE LIMITER] Enabled: {rate_limit_enabled}, Environment: {settings.environment}, Storage: {storage_uri or 'memory'}, Limits: {settings.api_rate_limit_per_minute}/min")
 
 limiter = Limiter(
     key_func=rate_limit_key_func,
@@ -36,7 +46,8 @@ limiter = Limiter(
         f"{settings.api_rate_limit_per_hour}/hour",
         f"{settings.api_rate_limit_per_minute}/minute"
     ],
-    enabled=rate_limit_enabled
+    enabled=rate_limit_enabled,
+    storage_uri=storage_uri
 )
 
 
