@@ -84,7 +84,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: ../infrastructure/docker/Dockerfile.frontend
+      dockerfile: ../infrastructure/docker/Dockerfile.frontend.dev
     container_name: stock_code_frontend
     environment:
       NEXT_PUBLIC_API_URL: http://backend:8000
