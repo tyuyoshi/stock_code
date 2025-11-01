@@ -31,11 +31,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if settings.environment == "production":
                 response.headers["Content-Security-Policy"] = (
                     "default-src 'self'; "
-                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+                    "script-src 'self' https://cdn.jsdelivr.net; "
                     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
                     "img-src 'self' data: https:; "
                     "font-src 'self' data: https://fonts.gstatic.com; "
-                    "connect-src 'self' https://api.stockcode.com"
+                    "connect-src 'self' https://api.stockcode.com; "
+                    "frame-ancestors 'none'; "
+                    "base-uri 'self'; "
+                    "form-action 'self'"
                 )
             
             # Force HTTPS in production

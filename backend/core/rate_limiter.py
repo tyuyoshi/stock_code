@@ -24,28 +24,44 @@ def rate_limit_key_func(request: Request) -> str:
 
 
 # Create limiter instance
-# Enable rate limiting for non-development environments
-rate_limit_enabled = settings.environment.lower() != "development"
+# Enable rate limiting for all environments (with relaxed limits for development)
+rate_limit_enabled = True  # Always enabled, but with different limits
 logger.info(f"Rate limiting enabled: {rate_limit_enabled} (environment: {settings.environment})")
 
-# Use Redis storage if Redis URL is configured, otherwise use in-memory storage
+# Set rate limits based on environment
+if settings.environment.lower() == "development":
+    # Relaxed limits for development
+    default_limits = [
+        "100000/day",   # 100k requests per day
+        "10000/hour",   # 10k requests per hour  
+        "1000/minute"   # 1000 requests per minute
+    ]
+    logger.info("Using relaxed rate limits for development environment")
+else:
+    # Production/staging limits from settings
+    default_limits = [
+        f"{settings.api_rate_limit_per_day}/day",
+        f"{settings.api_rate_limit_per_hour}/hour",
+        f"{settings.api_rate_limit_per_minute}/minute"
+    ]
+    logger.info(f"Using configured rate limits: {settings.api_rate_limit_per_minute}/min")
+
+# Use Redis storage if Redis URL is configured
 storage_uri = None
-if settings.redis_url and rate_limit_enabled:
+if settings.redis_url:
     # Use Redis for storage to persist rate limit data across restarts
     storage_uri = settings.redis_url
     logger.info(f"Using Redis storage for rate limiting: {storage_uri}")
 else:
     logger.info("Using in-memory storage for rate limiting")
+    if settings.environment == "production":
+        logger.warning("Redis not configured for production rate limiting - using memory storage")
 
-print(f"[RATE LIMITER] Enabled: {rate_limit_enabled}, Environment: {settings.environment}, Storage: {storage_uri or 'memory'}, Limits: {settings.api_rate_limit_per_minute}/min")
+print(f"[RATE LIMITER] Enabled: {rate_limit_enabled}, Environment: {settings.environment}, Storage: {storage_uri or 'memory'}, Limits: {default_limits[2]}")
 
 limiter = Limiter(
     key_func=rate_limit_key_func,
-    default_limits=[
-        f"{settings.api_rate_limit_per_day}/day",
-        f"{settings.api_rate_limit_per_hour}/hour",
-        f"{settings.api_rate_limit_per_minute}/minute"
-    ],
+    default_limits=default_limits,
     enabled=rate_limit_enabled,
     storage_uri=storage_uri
 )

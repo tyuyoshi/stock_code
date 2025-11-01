@@ -227,17 +227,28 @@ class TestRequestSizeLimit:
     
     def test_large_request_rejected(self):
         """Test that large requests are rejected"""
-        # Create a large payload (over 10MB)
-        large_data = "x" * (11 * 1024 * 1024)
-        
+        # Test with content-length header exceeding limit (10MB)
         response = client.post(
-            "/test-endpoint",
-            json={"data": large_data},
-            headers={"content-length": str(len(large_data))}
+            "/",  # Use root endpoint for testing
+            headers={"content-length": str(11 * 1024 * 1024)},  # 11MB
+            json={"test": "data"}
         )
         
-        # Note: This would need an actual endpoint to test properly
-        # assert response.status_code == 413
+        # Request should be rejected with 413 Payload Too Large
+        assert response.status_code == 413
+        assert "Request body too large" in response.text
+    
+    def test_normal_request_accepted(self):
+        """Test that normal-sized requests are accepted"""
+        # Test with normal size request
+        response = client.post(
+            "/",
+            headers={"content-length": "1000"},  # 1KB
+            json={"test": "data"}
+        )
+        
+        # Should get 405 Method Not Allowed (POST not implemented) rather than 413
+        assert response.status_code == 405  # Not 413
 
 
 if __name__ == "__main__":
