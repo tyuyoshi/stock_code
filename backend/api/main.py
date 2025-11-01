@@ -41,6 +41,7 @@ app.add_middleware(RequestSizeMiddleware)
 
 
 @app.get("/")
+@app.head("/")
 @limiter.limit("100/minute")
 async def root(request: Request):
     """Root endpoint"""
@@ -48,6 +49,7 @@ async def root(request: Request):
 
 
 @app.get("/health")
+@app.head("/health")
 @limiter.exempt
 async def health_check():
     """Health check endpoint - exempt from rate limiting"""
