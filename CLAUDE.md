@@ -84,10 +84,17 @@ npm run build           # Production build
    - 🔄 Yahoo Finance data fetching (planned)
 2. **Data Processing**: 
    - ✅ **Basic financial indicators** - ROE, equity ratio, operating margin (Issue #6)
-   - 🔄 Advanced financial indicator calculations (Issue #13)
+   - ✅ **Advanced financial indicator calculations** - 60+ indicators across 6 categories (Issue #13)
 3. **API Endpoints**: Company search, screening, comparison, data export (planned)
 4. **Frontend**: Company details, screening interface, chart visualization (planned)
 5. **Batch Jobs**: Daily and quarterly data updates (planned)
+6. **User Features** (New - 2025/11/01):
+   - 🔄 **Google OAuth Authentication** - Replacing JWT auth (Issue #34)
+   - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50)
+   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51)
+   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52)
+   - 🔄 **Analyst Coverage** - Rating & coverage info (Issue #49)
+   - 🔄 **GA4 Integration** - Marketing analytics (Issue #53)
 
 ## Development Guidelines
 
@@ -118,8 +125,25 @@ npm run build           # Production build
 ## GitHub Integration
 
 - **Repository**: https://github.com/tyuyoshi/stock_code
-- **Issues**: 26 issues created covering all development phases
+- **Issues**: 41 total issues (36 active after duplicate removal)
 - **Project Board**: https://github.com/users/tyuyoshi/projects/5
+
+### Issue Management Guidelines
+
+**IMPORTANT**: All new issues MUST be added to the GitHub Project board immediately after creation.
+
+```bash
+# When creating a new issue, always add it to the project
+gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
+gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
+```
+
+### Issue Status (as of 2025/11/01)
+- **Total Issues**: 41 (After removing duplicates: 36)
+- **Closed**: 5 (#6, #13, #17, #27, #33)
+- **Open**: 36
+- **Critical Priority**: #30 (Security), #32 (Test Coverage)
+- **High Priority**: #31, #34, #35, #50, #51
 
 ## External APIs Used
 
@@ -132,12 +156,11 @@ npm run build           # Production build
 ### Critical Security Items (Must fix before production)
 - **CORS configuration** needs environment-specific settings (Issue #30)
 - **Secret keys** must be generated for production (Issue #30)
-- **Authentication system** not yet implemented (Issue #34)
+- **Google OAuth Authentication** implementation in progress (Issue #34)
 
 ### Missing Core Features
 - **Database migrations** with Alembic - setup method documented, needs env.py configuration (Issue #31)
 - **Test suite** implementation - currently ZERO coverage (Issue #32)
-- **Financial indicators calculation engine** - advanced metrics and ratios (Issue #13)
 - **Core API endpoints** for business logic (Issue #35)
 
 ### Performance & Quality Improvements (New Issues)
@@ -149,16 +172,17 @@ npm run build           # Production build
 - ✅ Initial setup phase completed
 - ✅ Core infrastructure in place  
 - ✅ **EDINET API & XBRL Parser implemented** (Issue #6)
-- ✅ **Basic financial indicators** calculation working
-- ⚠️ Advanced business logic implementation pending
+- ✅ **Financial indicators calculation engine** - 60+ indicators (Issue #13)
 - ⚠️ Security hardening required (Issue #30)
 - ⚠️ Comprehensive test suite needed (Issue #32)
+- 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority
-1. **Financial indicators calculation engine** (Issue #13) - High impact, builds on Issue #6
-2. **Database migration system** (Issue #31) - Infrastructure foundation
-3. **Daily batch jobs** (Issue #9) - Data automation, unblocked by Issue #6
-4. **Test suite implementation** (Issue #32) - Quality assurance
+1. **Security fixes** (Issue #30) - CRITICAL: CORS & Secret keys
+2. **Test suite implementation** (Issue #32) - CRITICAL: Zero coverage
+3. **Database migration system** (Issue #31) - Infrastructure foundation
+4. **Google OAuth Authentication** (Issue #34) - User management base
+5. **Core API endpoints** (Issue #35) - Business logic APIs
 
 ## Troubleshooting
 
