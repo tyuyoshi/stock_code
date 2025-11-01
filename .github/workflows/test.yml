@@ -1,0 +1,286 @@
+name: Test Suite (Legacy - Use test-optimized.yml instead)
+# ⚠️ DEPRECATED: This workflow is kept for reference only
+# Please use test-optimized.yml for better credit efficiency
+
+on:
+  # Disabled to save credits - use test-optimized.yml
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running the legacy workflow?'
+        required: true
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+  POSTGRES_VERSION: '15'
+  REDIS_VERSION: '7'
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stock_code_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+    
+    - name: Install Python dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio pytest-mock
+    
+    - name: Set up test environment
+      run: |
+        cp backend/.env.test backend/.env
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/stock_code_test" >> backend/.env
+        echo "REDIS_URL=redis://localhost:6379/1" >> backend/.env
+    
+    - name: Initialize database
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stock_code_test
+      run: |
+        # Create tables using SQLAlchemy
+        python -c "
+        from models.company import Base as CompanyBase
+        from models.financial import Base as FinancialBase
+        from core.database import engine
+        CompanyBase.metadata.create_all(engine)
+        FinancialBase.metadata.create_all(engine)
+        "
+    
+    - name: Run unit tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stock_code_test
+        REDIS_URL: redis://localhost:6379/1
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ -v -m "unit" --cov=. --cov-report=xml --cov-report=term-missing
+    
+    - name: Run integration tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stock_code_test
+        REDIS_URL: redis://localhost:6379/1
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ -v -m "integration" --cov=. --cov-report=xml --cov-report=term-missing --cov-append
+    
+    - name: Run all tests (if no markers)
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/stock_code_test
+        REDIS_URL: redis://localhost:6379/1
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing --cov-append
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+    
+    - name: Check coverage threshold
+      working-directory: ./backend
+      run: |
+        coverage report --fail-under=80
+      continue-on-error: true  # Don't fail the build initially, just report
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Run linting
+      working-directory: ./frontend
+      run: npm run lint
+      continue-on-error: true  # Don't fail if linting has issues initially
+    
+    - name: Run type checking
+      working-directory: ./frontend
+      run: npm run type-check
+      continue-on-error: true  # Don't fail if type checking has issues initially
+    
+    - name: Run tests
+      working-directory: ./frontend
+      run: npm test -- --passWithNoTests
+      continue-on-error: true  # Don't fail if no tests exist yet
+    
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install quality tools
+      run: |
+        pip install black flake8 mypy pylint bandit
+    
+    - name: Run Black (formatting check)
+      working-directory: ./backend
+      run: black --check .
+      continue-on-error: true
+    
+    - name: Run Flake8 (linting)
+      working-directory: ./backend
+      run: flake8 . --max-line-length=100 --exclude=alembic,tests
+      continue-on-error: true
+    
+    - name: Run MyPy (type checking)
+      working-directory: ./backend
+      run: mypy . --ignore-missing-imports
+      continue-on-error: true
+    
+    - name: Run Bandit (security linting)
+      working-directory: ./backend
+      run: bandit -r . -x tests
+      continue-on-error: true
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build backend Docker image
+      run: |
+        docker build -f backend/Dockerfile -t stock-code-backend:test ./backend
+    
+    - name: Build frontend Docker image
+      run: |
+        docker build -f frontend/Dockerfile -t stock-code-frontend:test ./frontend
+    
+    - name: Test docker-compose
+      run: |
+        docker-compose config
+        docker-compose build
+
+  integration-test:
+    name: End-to-End Integration Test
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Create .env file
+      run: |
+        cp .env.example .env
+        echo "ENVIRONMENT=test" >> .env
+        echo "DATABASE_URL=postgresql://postgres:postgres@db:5432/stock_code" >> .env
+        echo "REDIS_URL=redis://redis:6379/0" >> .env
+    
+    - name: Start services with docker-compose
+      run: |
+        docker-compose up -d
+        sleep 10  # Wait for services to start
+    
+    - name: Check backend health
+      run: |
+        curl -f http://localhost:8000/health || exit 1
+    
+    - name: Check frontend health
+      run: |
+        curl -f http://localhost:3000 || exit 1
+    
+    - name: Run basic API tests
+      run: |
+        # Test API endpoints
+        curl -f http://localhost:8000/api/v1/companies || echo "Companies endpoint not yet implemented"
+        curl -f http://localhost:8000/docs || exit 1  # Swagger docs should be available
+    
+    - name: Stop services
+      if: always()
+      run: docker-compose down -v
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, code-quality, docker-build, integration-test]
+    if: always()
+    
+    steps:
+    - name: Test Results Summary
+      run: |
+        echo "## Test Suite Summary"
+        echo "All test jobs completed. Check individual job results for details."
+        echo "### Job Status:"
+        echo "- Backend Tests: ${{ needs.backend-tests.result }}"
+        echo "- Frontend Tests: ${{ needs.frontend-tests.result }}"
+        echo "- Code Quality: ${{ needs.code-quality.result }}"
+        echo "- Docker Build: ${{ needs.docker-build.result }}"
+        echo "- Integration Test: ${{ needs.integration-test.result }}"
