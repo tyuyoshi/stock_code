@@ -5,11 +5,6 @@ Test suite for Financial Indicators Calculation Engine
 import pytest
 from decimal import Decimal
 from datetime import datetime
-import sys
-import os
-
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.financial_indicators import FinancialIndicatorEngine, IndustryType
 
@@ -91,10 +86,10 @@ class TestFinancialIndicatorEngine:
         expected_margin = (150000000 / 1000000000) * 100
         assert abs(indicators['operating_margin'] - expected_margin) < 0.01
         
-        # Test ROIC
+        # Test ROIC (with default 30% tax rate)
         assert 'roic' in indicators
         invested_capital = 2000000000 - 500000000
-        nopat = 150000000 * 0.7  # 30% tax rate
+        nopat = 150000000 * (1 - 0.3)  # Using default 30% tax rate
         expected_roic = (nopat / invested_capital) * 100
         assert abs(indicators['roic'] - expected_roic) < 0.01
         
@@ -363,6 +358,48 @@ class TestFinancialIndicatorEngine:
         # Test unknown indicator
         description = engine.get_indicator_description('unknown_indicator')
         assert 'No description available' in description
+    
+    def test_custom_tax_rate(self, sample_financial_data):
+        """Test custom tax rate configuration"""
+        # Create engine with custom tax rate (25%)
+        engine = FinancialIndicatorEngine(tax_rate=0.25)
+        indicators = engine.calculate_profitability_indicators(sample_financial_data)
+        
+        # Test ROIC with custom tax rate
+        assert 'roic' in indicators
+        invested_capital = 2000000000 - 500000000
+        nopat = 150000000 * (1 - 0.25)  # Custom 25% tax rate
+        expected_roic = (nopat / invested_capital) * 100
+        assert abs(indicators['roic'] - expected_roic) < 0.01
+    
+    def test_custom_benchmarks(self, sample_financial_data, sample_stock_data):
+        """Test custom benchmark configuration"""
+        custom_benchmarks = {
+            'profitability': {'roe': 20, 'roa': 8},
+            'safety': {'current_ratio': 2.0}
+        }
+        
+        engine = FinancialIndicatorEngine(benchmarks=custom_benchmarks)
+        indicators = engine.calculate_all_indicators(
+            sample_financial_data,
+            sample_stock_data
+        )
+        
+        # Check that quality scores are calculated with custom benchmarks
+        assert 'quality_scores' in indicators
+        assert 'profitability_score' in indicators['quality_scores']
+        assert 'safety_score' in indicators['quality_scores']
+        
+        # The scores should be different from default benchmarks
+        default_engine = FinancialIndicatorEngine()
+        default_indicators = default_engine.calculate_all_indicators(
+            sample_financial_data,
+            sample_stock_data
+        )
+        
+        # Due to different benchmarks, scores should differ
+        # (Testing that custom benchmarks are actually being used)
+        assert indicators['quality_scores'] != default_indicators['quality_scores']
 
 
 if __name__ == "__main__":

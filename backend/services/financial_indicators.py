@@ -33,10 +33,17 @@ class FinancialIndicatorEngine:
     Implements comprehensive financial metrics for investment analysis
     """
     
-    def __init__(self):
-        """Initialize the financial indicator engine"""
+    def __init__(self, tax_rate: float = 0.3, benchmarks: Optional[Dict[str, Dict[str, float]]] = None):
+        """Initialize the financial indicator engine
+        
+        Args:
+            tax_rate: Corporate tax rate (default: 0.3 for 30%)
+            benchmarks: Custom benchmark values for quality scoring
+        """
         self._cache = {}
         self._precision = 4  # Decimal places for calculations
+        self.tax_rate = tax_rate
+        self.custom_benchmarks = benchmarks or {}
         
     def calculate_all_indicators(
         self, 
@@ -117,8 +124,8 @@ class FinancialIndicatorEngine:
             if self._has_values(data, ['operating_income', 'total_assets', 'current_liabilities']):
                 invested_capital = data['total_assets'] - data['current_liabilities']
                 if invested_capital > 0:
-                    # Assuming tax rate of 30% for Japanese companies
-                    nopat = data['operating_income'] * 0.7
+                    # Apply configurable tax rate
+                    nopat = data['operating_income'] * (1 - self.tax_rate)
                     indicators['roic'] = self._safe_divide(nopat, invested_capital) * 100
             
             # Operating Margin - 営業利益率
@@ -549,12 +556,27 @@ class FinancialIndicatorEngine:
         """
         scores = {}
         
+        # Get default benchmarks or use custom ones
+        default_benchmarks = {
+            'profitability': {'roe': 15, 'roa': 5, 'operating_margin': 10, 'roic': 12},
+            'safety': {'current_ratio': 1.5, 'equity_ratio': 40, 'interest_coverage': 3},
+            'efficiency': {'asset_turnover': 1.0, 'cash_conversion_cycle': 60},
+            'growth': {'revenue_growth': 10, 'net_income_growth': 15}
+        }
+        
+        # Merge custom benchmarks with defaults
+        benchmarks = default_benchmarks.copy()
+        if self.custom_benchmarks:
+            for category, values in self.custom_benchmarks.items():
+                if category in benchmarks:
+                    benchmarks[category].update(values)
+        
         # Profitability Score
         profitability_metrics = ['roe', 'roa', 'operating_margin', 'roic']
         prof_score = self._calculate_category_score(
             indicators.get('profitability', {}), 
             profitability_metrics,
-            {'roe': 15, 'roa': 5, 'operating_margin': 10, 'roic': 12}  # Benchmark values
+            benchmarks['profitability']
         )
         scores['profitability_score'] = prof_score
         
@@ -563,7 +585,7 @@ class FinancialIndicatorEngine:
         safety_score = self._calculate_category_score(
             indicators.get('safety', {}),
             safety_metrics,
-            {'current_ratio': 1.5, 'equity_ratio': 40, 'interest_coverage': 3}
+            benchmarks['safety']
         )
         scores['safety_score'] = safety_score
         
@@ -572,7 +594,7 @@ class FinancialIndicatorEngine:
         efficiency_score = self._calculate_category_score(
             indicators.get('efficiency', {}),
             efficiency_metrics,
-            {'asset_turnover': 1.0, 'cash_conversion_cycle': 60}  # CCC lower is better
+            benchmarks['efficiency']
         )
         scores['efficiency_score'] = efficiency_score
         
@@ -582,7 +604,7 @@ class FinancialIndicatorEngine:
             growth_score = self._calculate_category_score(
                 indicators.get('growth', {}),
                 growth_metrics,
-                {'revenue_growth': 10, 'net_income_growth': 15}
+                benchmarks['growth']
             )
             scores['growth_score'] = growth_score
         
