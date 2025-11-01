@@ -1,0 +1,18 @@
+# Development Dockerfile for Frontend
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy application files
+COPY . .
+
+EXPOSE 3000
+
+ENV PORT 3000
+
+# Development command will be provided by docker-compose
+CMD ["npm", "run", "dev"]

@@ -1,8 +1,13 @@
 """Main FastAPI Application"""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+
+from core.config import settings
+from core.middleware import SecurityHeadersMiddleware, RequestSizeMiddleware
+from core.rate_limiter import limiter, custom_rate_limit_exceeded_handler, RateLimits
 
 app = FastAPI(
     title="Stock Code API",
@@ -12,27 +17,68 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# CORS設定
-# TODO: Issue #30 - 本番環境では環境変数から特定のオリジンのみ許可
+# Add rate limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
+
+# CORS設定 - 環境に応じた設定を適用
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 開発環境のみ。本番では ["https://yourdomain.com"] のように特定
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.get_cors_origins(),
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
+
+# Validate secret key on startup
+settings.validate_secret_key()
+
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add request size limit middleware
+app.add_middleware(RequestSizeMiddleware)
 
 
 @app.get("/")
-async def root():
+@limiter.limit(RateLimits.STANDARD)
+async def root(request: Request):
     """Root endpoint"""
     return {"message": "Stock Code API", "version": "0.1.0"}
 
 
+@app.head("/")
+@limiter.limit(RateLimits.STANDARD)
+async def root_head(request: Request):
+    """Root endpoint for HEAD requests"""
+    return {"message": "Stock Code API", "version": "0.1.0"}
+
+
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
+@limiter.exempt
+async def health_check(request: Request):
+    """Health check endpoint - exempt from rate limiting"""
     return JSONResponse(
         status_code=200,
         content={"status": "healthy", "service": "stock-code-api"},
+    )
+
+
+@app.head("/health")
+@limiter.exempt
+async def health_check_head(request: Request):
+    """Health check endpoint for HEAD requests - exempt from rate limiting"""
+    return JSONResponse(
+        status_code=200,
+        content={"status": "healthy", "service": "stock-code-api"},
+    )
+
+
+@app.options("/{path:path}")
+@limiter.exempt
+async def options_handler(path: str):
+    """Handle OPTIONS requests for CORS preflight"""
+    return JSONResponse(
+        status_code=200,
+        content={"message": "OK"},
     )
