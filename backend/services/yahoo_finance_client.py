@@ -8,10 +8,15 @@ import pandas as pd
 import yfinance as yf
 from redis import Redis
 
-try:
-    from ..core.config import settings
-except ImportError:
+import sys
+from pathlib import Path
+
+# Add parent directory to path for config import
+if __name__ == "__main__":
+    sys.path.append(str(Path(__file__).parent.parent))
     from core.config import settings
+else:
+    from ..core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,9 +76,24 @@ class YahooFinanceClient:
             import json
             cached_data = self.redis_client.get(cache_key)
             if cached_data:
-                return json.loads(cached_data)
+                # Parse and validate JSON structure
+                parsed_data = json.loads(cached_data)
+                
+                # Basic validation: ensure it's a dictionary with expected structure
+                if not isinstance(parsed_data, dict):
+                    logger.warning(f"Invalid cached data structure for key {cache_key}: not a dict")
+                    return None
+                
+                # Additional validation for required fields (basic sanity check)
+                if 'ticker' in parsed_data and not isinstance(parsed_data['ticker'], str):
+                    logger.warning(f"Invalid cached data for key {cache_key}: ticker not a string")
+                    return None
+                
+                return parsed_data
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse cached JSON for key {cache_key}: {e}")
         except Exception as e:
-            logger.warning(f"Failed to get cached data: {e}")
+            logger.warning(f"Failed to get cached data for key {cache_key}: {e}")
         
         return None
     

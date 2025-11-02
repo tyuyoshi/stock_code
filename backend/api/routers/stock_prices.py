@@ -6,18 +6,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-try:
-    from ...core.database import get_db
-    from ...models.company import Company
-    from ...models.financial import StockPrice
-    from ...services.yahoo_finance_client import YahooFinanceClient
-    from ...core.dependencies import get_yahoo_finance_client
-except ImportError:
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+if __name__ == "__main__":
+    sys.path.append(str(Path(__file__).parent.parent.parent))
     from core.database import get_db
     from models.company import Company
     from models.financial import StockPrice
     from services.yahoo_finance_client import YahooFinanceClient
     from core.dependencies import get_yahoo_finance_client
+else:
+    from ...core.database import get_db
+    from ...models.company import Company
+    from ...models.financial import StockPrice
+    from ...services.yahoo_finance_client import YahooFinanceClient
+    from ...core.dependencies import get_yahoo_finance_client
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/stock-prices", tags=["stock-prices"])
@@ -321,31 +326,35 @@ async def get_stock_prices(
     query = db.query(StockPrice).filter(StockPrice.company_id.in_(company_ids))
     
     if latest_only:
-        # Get latest price for each company
-        # This is a complex query - we'll use a subquery approach
-        from sqlalchemy import and_
+        # Get latest price for each company using efficient window function
+        from sqlalchemy import func, and_
         
-        prices = []
-        for company in companies:
-            latest_price = db.query(StockPrice).filter(
-                StockPrice.company_id == company.id
-            ).order_by(desc(StockPrice.date)).first()
-            
-            if latest_price:
-                prices.append(latest_price)
+        # Subquery to get latest date for each company
+        latest_dates_subq = db.query(
+            StockPrice.company_id,
+            func.max(StockPrice.date).label('latest_date')
+        ).filter(
+            StockPrice.company_id.in_(company_ids)
+        ).group_by(StockPrice.company_id).subquery()
+        
+        # Join with original table to get complete records
+        prices = db.query(StockPrice).join(
+            latest_dates_subq,
+            and_(
+                StockPrice.company_id == latest_dates_subq.c.company_id,
+                StockPrice.date == latest_dates_subq.c.latest_date
+            )
+        ).all()
     else:
         prices = query.order_by(desc(StockPrice.date)).all()
+    
+    # Create efficient company lookup
+    company_lookup = {company.id: company.ticker_symbol for company in companies}
     
     # Convert to response model
     response_data = []
     for price in prices:
-        # Find the ticker symbol for this price
-        ticker = None
-        for company in companies:
-            if company.id == price.company_id:
-                ticker = company.ticker_symbol
-                break
-        
+        ticker = company_lookup.get(price.company_id)
         if ticker:
             response_data.append(StockPriceResponse(
                 id=price.id,
