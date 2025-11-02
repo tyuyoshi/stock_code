@@ -8,15 +8,7 @@ import pandas as pd
 import yfinance as yf
 from redis import Redis
 
-import sys
-from pathlib import Path
-
-# Add parent directory to path for config import
-if __name__ == "__main__":
-    sys.path.append(str(Path(__file__).parent.parent))
-    from core.config import settings
-else:
-    from ..core.config import settings
+from core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

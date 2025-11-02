@@ -2,15 +2,7 @@
 
 from typing import Generator
 from redis import Redis
-import sys
-from pathlib import Path
-
-# Add parent directory to path for service import
-if __name__ == "__main__":
-    sys.path.append(str(Path(__file__).parent.parent))
-    from services.yahoo_finance_client import YahooFinanceClient
-else:
-    from ..services.yahoo_finance_client import YahooFinanceClient
+from services.yahoo_finance_client import YahooFinanceClient
 from .config import settings
 import logging
 
