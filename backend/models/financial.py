@@ -63,6 +63,9 @@ class StockPrice(Base):
     adjusted_close = Column(Float)
     volume = Column(Float)
     
+    # Data source tracking
+    data_source = Column(String(50), default="unknown")  # yahoo_finance, edinet, etc.
+    
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
 
