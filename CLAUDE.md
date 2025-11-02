@@ -41,19 +41,23 @@ cp .env.example .env    # Configure environment
 ```
 
 ### Development
+
+**IMPORTANT**: Always use virtual environment for Python development to keep the local environment clean.
+
 ```bash
 # With Docker
-docker-compose up       # Start all services
-docker-compose logs -f  # View logs
+docker compose up       # Start all services
+docker compose logs -f  # View logs
 
-# Backend (without Docker)
+# Backend (without Docker) - ALWAYS USE VIRTUAL ENVIRONMENT
 cd backend
-source venv/bin/activate
-# Alembic初期化（初回のみ）
-alembic init alembic
-# データベースマイグレーション
-alembic upgrade head
-uvicorn api.main:app --reload
+source venv/bin/activate  # Activate virtual environment first!
+# All Python commands must be run inside venv:
+(venv) $ alembic init alembic  # Alembic initialization (first time only)
+(venv) $ alembic upgrade head   # Database migrations
+(venv) $ uvicorn api.main:app --reload  # Run server
+(venv) $ pip install <package>  # Install packages
+(venv) $ pytest                 # Run tests
 
 # Frontend (without Docker)
 cd frontend
@@ -62,13 +66,14 @@ npm run dev
 
 ### Testing & Quality
 ```bash
-# Backend
+# Backend - ALWAYS IN VIRTUAL ENVIRONMENT
 cd backend
-pytest                  # Run tests (78% coverage achieved)
-./run_tests.sh          # Run tests with Docker database
-black .                 # Format code
-flake8                  # Lint code
-mypy .                  # Type checking
+source venv/bin/activate
+(venv) $ pytest                  # Run tests (78% coverage achieved)
+(venv) $ ./run_tests.sh          # Run tests with Docker database
+(venv) $ black .                 # Format code
+(venv) $ flake8                  # Lint code
+(venv) $ mypy .                  # Type checking
 
 # Frontend
 cd frontend
@@ -102,6 +107,18 @@ npm run build           # Production build
    - 🔄 **GA4 Integration** - Marketing analytics (Issue #53)
 
 ## Development Guidelines
+
+### Documentation Policy (IMPORTANT)
+
+**One Directory, One README.md Rule**: 
+- Each directory should have only ONE README.md file
+- Do NOT create multiple markdown files (e.g., MIGRATION.md, TESTING.md, API.md)
+- All documentation for a directory should be consolidated in its README.md
+- Example structure:
+  - `/README.md` - Project overview
+  - `/backend/README.md` - All backend docs (setup, migration, testing, API)
+  - `/frontend/README.md` - All frontend docs
+- Exception: CLAUDE.md (this file) for Claude Code guidance only
 
 ### When Adding New Features
 
@@ -202,8 +219,8 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 
 - **Database connection**: Check `DATABASE_URL` in `.env`
 - **Port conflicts**: Use `lsof -i :PORT` to find conflicts
-- **Docker issues**: Run `docker-compose down -v` and rebuild
-- **API errors**: Check logs with `docker-compose logs backend`
+- **Docker issues**: Run `docker compose down -v` and rebuild
+- **API errors**: Check logs with `docker compose logs backend`
 
 ### Database Migrations (Alembic) ✅ Completed
 
@@ -237,3 +254,4 @@ python migrations/run_migrations.py upgrade  # Helper script
 - `financial_indicators` - Calculated metrics
 
 See `backend/README.md` for detailed documentation.
+
