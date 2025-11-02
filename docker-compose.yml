@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -78,7 +76,13 @@ services:
         condition: service_healthy
     networks:
       - stock_code_network
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      sh -c "
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting FastAPI server...' &&
+        uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+      "
 
   # Frontend (Next.js)
   frontend:

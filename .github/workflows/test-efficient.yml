@@ -1,5 +1,9 @@
 name: Efficient Test Suite
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   push:
     branches: [ main, develop ]
@@ -13,7 +17,8 @@ on:
       - '!**.txt'
       - '!**/docs/**'
       - '!**/.gitignore'
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
     branches: [ main ]
     paths:
       - 'backend/**'
@@ -42,7 +47,14 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     # Skip if commit message contains [skip ci]
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    # For pull_request_target, only run if from same repo (not a fork)
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      (github.event_name != 'pull_request_target' || 
+       github.event.pull_request.head.repo.full_name == github.repository)
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
