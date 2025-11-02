@@ -63,7 +63,7 @@ def test_api():
         
         # Test multiple tickers endpoint
         print("\n5. Testing multiple tickers endpoint...")
-        response = requests.get(f"{base_url}/api/v1/stock-prices/?tickers=7203,9984", timeout=10)
+        response = requests.get(f"{base_url}/api/v1/stock-prices/?tickers=7203&tickers=9984", timeout=10)
         print(f"   Status: {response.status_code}")
         
         if response.status_code == 200:

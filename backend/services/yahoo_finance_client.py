@@ -158,7 +158,9 @@ class YahooFinanceClient:
             return price_data
             
         except Exception as e:
-            logger.error(f"Failed to fetch price data for {formatted_ticker}: {e}")
+            logger.error(f"Failed to fetch price data for {formatted_ticker}: {type(e).__name__}: {e}")
+            if "timezone" in str(e).lower():
+                logger.warning(f"Timezone error for {formatted_ticker} - market may be closed or ticker delisted")
             return None
     
     async def get_historical_data(

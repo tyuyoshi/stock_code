@@ -94,9 +94,9 @@ async def get_latest_stock_price(
     if live:
         # Fetch live data from Yahoo Finance
         try:
-            price_data = await yahoo_client.get_stock_price(ticker)
+            price_data = await yahoo_client.get_stock_price(ticker, use_cache=False)
             if not price_data:
-                raise HTTPException(status_code=503, detail="Unable to fetch live price data")
+                raise HTTPException(status_code=503, detail="Unable to fetch live price data from Yahoo Finance. The market may be closed or the ticker may be invalid.")
             
             # Calculate change if we have previous close
             current_price = price_data.get('close_price')
@@ -122,7 +122,12 @@ async def get_latest_stock_price(
                 currency=price_data.get('currency', 'JPY'),
                 last_updated=datetime.now()
             )
+        except HTTPException:
+            raise  # Re-raise HTTPExceptions as-is
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error fetching live data for {ticker}: {str(e)}")
             raise HTTPException(status_code=503, detail=f"Error fetching live data: {str(e)}")
     
     # Get latest price from database
