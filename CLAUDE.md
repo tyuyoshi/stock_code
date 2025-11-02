@@ -64,7 +64,8 @@ npm run dev
 ```bash
 # Backend
 cd backend
-pytest                  # Run tests
+pytest                  # Run tests (78% coverage achieved)
+./run_tests.sh          # Run tests with Docker database
 black .                 # Format code
 flake8                  # Lint code
 mypy .                  # Type checking
@@ -86,6 +87,10 @@ npm run build           # Production build
    - ✅ **Basic financial indicators** - ROE, equity ratio, operating margin (Issue #6)
    - ✅ **Advanced financial indicator calculations** - 60+ indicators across 6 categories (Issue #13)
 3. **API Endpoints**: Company search, screening, comparison, data export (planned)
+7. **Testing Infrastructure** (Completed - 2025/11/01):
+   - ✅ **Comprehensive test suite** - 91 tests with 78% coverage (Issue #32)
+   - ✅ **Optimized CI/CD pipeline** - 60-80% GitHub Actions credit savings (PR #58)
+   - 🔄 **Test Coverage Monitoring** - Future improvements (Issues #59-61)
 4. **Frontend**: Company details, screening interface, chart visualization (planned)
 5. **Batch Jobs**: Daily and quarterly data updates (planned)
 6. **User Features** (New - 2025/11/01):
@@ -139,10 +144,9 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 ```
 
 ### Issue Status (as of 2025/11/01 - Updated)
-- **Total Issues**: 44 (After security review)
-- **Closed**: 6 (#6, #13, #17, #27, #30, #33)
-- **Open**: 38
-- **Critical Priority**: #32 (Test Coverage - 0% coverage)
+- **Total Issues**: 48 (Including new test-related issues)
+- **Closed**: 11 (#6, #13, #17, #27, #30, #32, #33, #63, #64, #65, #66)
+- **Open**: 37
 - **High Priority**: #31, #34, #35, #50, #51
 
 ## External APIs Used
@@ -154,13 +158,14 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 ## Known Issues and TODOs
 
 ### Critical Security Items (Must fix before production)
-- **CORS configuration** needs environment-specific settings (Issue #30)
-- **Secret keys** must be generated for production (Issue #30)
+- ✅ **python-jose vulnerability** fixed (Issue #63 - Completed 2025/11/01)
+- ✅ **python-multipart DoS vulnerability** fixed (Issue #64 - Completed 2025/11/01)
+- ✅ **aiohttp multiple vulnerabilities** fixed (Issue #65 - Completed 2025/11/01)
+- ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
 - **Google OAuth Authentication** implementation in progress (Issue #34)
 
 ### Missing Core Features
 - **Database migrations** with Alembic - setup method documented, needs env.py configuration (Issue #31)
-- **Test suite** implementation - currently ZERO coverage (Issue #32)
 - **Core API endpoints** for business logic (Issue #35)
 
 ### Performance & Quality Improvements (New Issues)
@@ -174,15 +179,22 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - ✅ **EDINET API & XBRL Parser implemented** (Issue #6)
 - ✅ **Financial indicators calculation engine** - 60+ indicators (Issue #13)
 - ✅ **Security hardening completed** (Issue #30) - CORS, Rate Limiting, Security Headers
-- ⚠️ Comprehensive test suite needed (Issue #32) - CRITICAL: 0% coverage
+- ✅ **Test suite implementation completed** (Issue #32) - 78% coverage, 56/91 tests passing (PR #58)
+- ✅ **All security vulnerabilities fixed** (Issues #63-66) - 14 Dependabot alerts resolved (PR #67, #68, #70, #71)
+  - python-jose updated to 3.5.0
+  - python-multipart updated to 0.0.20
+  - aiohttp updated to 3.12.14
+  - requests updated to 2.32.4
+  - black updated to 24.3.0
+  - sentry-sdk updated to 1.45.1
 - 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority
-1. **Test suite implementation** (Issue #32) - CRITICAL: Zero coverage
-2. **Database migration system** (Issue #31) - Infrastructure foundation  
-3. **Google OAuth Authentication** (Issue #34) - User management base
-4. **Core API endpoints** (Issue #35) - Business logic APIs
-5. **Integration tests** (Issue #56) - Security middleware testing
+1. **Database migration system** (Issue #31) - Infrastructure foundation  
+2. **Google OAuth Authentication** (Issue #34) - User management base
+3. **Core API endpoints** (Issue #35) - Business logic APIs
+4. **Watchlist & Alert Features** (Issues #50, #51) - Core user features
+5. **Test Suite Improvements** (Issues #59-61) - Extend coverage, CI/CD monitoring
 
 ## Troubleshooting
 
