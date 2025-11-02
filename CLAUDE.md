@@ -205,22 +205,35 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - **Docker issues**: Run `docker-compose down -v` and rebuild
 - **API errors**: Check logs with `docker-compose logs backend`
 
-### Alembic Setup Issues
+### Database Migrations (Alembic) ✅ Completed
 
-**Error: "No config file 'alembic.ini' found"**
+**Status**: Fully configured and operational (Issue #31 completed - 2025/11/02)
+
+**Quick Commands** (Always in virtual environment):
 ```bash
 cd backend
-alembic init alembic
+source venv/bin/activate
+alembic current                    # Check current migration
+alembic revision --autogenerate -m "Description"  # Generate migration
+alembic upgrade head                # Apply migrations
+python migrations/run_migrations.py upgrade  # Helper script
 ```
 
-**After initialization, configure `alembic/env.py`:**
-1. Set database URL from environment:
-```python
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
-```
+**Configuration**:
+- ✅ Alembic initialized with SQLAlchemy 2.0 support
+- ✅ env.py configured with DATABASE_URL from environment (production-ready)
+- ✅ All models aggregated in models/__init__.py
+- ✅ Initial migration created and applied (4 tables)
+- ✅ Docker integration configured (auto-migration on startup)
+- ✅ Migration helper script with comprehensive CLI
+- ✅ Black formatter integration for generated migrations
+- ✅ Security hardened (no hardcoded credentials)
+- ✅ GitHub Actions CI/CD integrated
 
-2. Import and set model metadata:
-```python
-from models import Base
-target_metadata = Base.metadata
-```
+**Implemented Tables**:
+- `companies` - Company master data
+- `financial_statements` - Financial reports  
+- `stock_prices` - Daily stock prices
+- `financial_indicators` - Calculated metrics
+
+See `backend/README.md` for detailed documentation.
