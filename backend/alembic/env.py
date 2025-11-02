@@ -37,9 +37,9 @@ database_url = os.getenv("DATABASE_URL")
 if not database_url:
     print("Error: DATABASE_URL environment variable is required")
     print("Set it in your .env file or export it:")
-    print("  export DATABASE_URL=postgresql://user:pass@host:port/dbname")
-    print("For development with Docker:")
-    print("  export DATABASE_URL=postgresql://stockcode:stockcode123@localhost:5432/stockcode")
+    print("  export DATABASE_URL=postgresql://user:password@host:port/dbname")
+    if os.getenv("ENVIRONMENT") == "development":
+        print("For development: Check .env.example for configuration template")
     sys.exit(1)
 
 config.set_main_option("sqlalchemy.url", database_url)
