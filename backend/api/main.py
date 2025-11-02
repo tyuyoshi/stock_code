@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from core.config import settings
 from core.middleware import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import limiter, custom_rate_limit_exceeded_handler, RateLimits
-from api.routers import stock_prices
+from api.routers import stock_prices, companies, screening, compare, export
 
 app = FastAPI(
     title="Stock Code API",
@@ -42,6 +42,10 @@ app.add_middleware(RequestSizeMiddleware)
 
 # Include routers
 app.include_router(stock_prices.router)
+app.include_router(companies.router)
+app.include_router(screening.router)
+app.include_router(compare.router)
+app.include_router(export.router)
 
 
 @app.get("/")
