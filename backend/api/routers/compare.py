@@ -1,9 +1,11 @@
 """Company comparison API endpoints"""
 
+import logging
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from core.database import get_db
 from core.rate_limiter import limiter, RateLimits
@@ -14,6 +16,9 @@ from schemas.compare import (
     ComparisonTemplatesResponse,
     ComparisonMetricsResponse
 )
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/compare",
@@ -68,8 +73,15 @@ async def compare_companies(
             comparison_date=datetime.now().isoformat(),
             requested_metrics=compare_request.metrics
         )
+    except ValueError as e:
+        logger.warning(f"Invalid comparison request: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid comparison: {str(e)}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error in comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/templates", response_model=ComparisonTemplatesResponse)
@@ -142,8 +154,15 @@ async def compare_using_template(
             comparison_date=datetime.now().isoformat(),
             requested_metrics=template.metrics
         )
+    except ValueError as e:
+        logger.warning(f"Invalid template comparison request: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid comparison: {str(e)}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in template comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error in template comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/metrics", response_model=ComparisonMetricsResponse)

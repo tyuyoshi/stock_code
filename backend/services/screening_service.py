@@ -7,6 +7,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc, asc, text
 from fastapi import HTTPException
 
+# Screening threshold constants
+HIGH_ROE_THRESHOLD = 15.0  # ROE >= 15%
+LOW_PER_THRESHOLD = 15.0   # PER <= 15
+HIGH_DIVIDEND_THRESHOLD = 3.0  # Dividend yield >= 3%
+LARGE_CAP_THRESHOLD_MILLIONS = 100_000  # 1000億円 in millions
+STABLE_EQUITY_RATIO_THRESHOLD = 50.0  # Equity ratio >= 50%
+STABLE_CURRENT_RATIO_THRESHOLD = 150.0  # Current ratio >= 150%
+GROWTH_REVENUE_THRESHOLD = 20.0  # Revenue growth >= 20%
+GROWTH_INCOME_THRESHOLD = 20.0   # Income growth >= 20%
+
 from models.company import Company
 from models.financial import FinancialIndicator
 from schemas.screening import (
@@ -201,7 +211,7 @@ class ScreeningService:
                     ScreeningFilter(
                         field="roe",
                         operator=ComparisonOperator.GTE,
-                        value=15.0
+                        value=HIGH_ROE_THRESHOLD
                     )
                 ],
                 sort=ScreeningSort(field="roe", order=ScreeningSortOrder.DESC)
@@ -215,7 +225,7 @@ class ScreeningService:
                     ScreeningFilter(
                         field="per",
                         operator=ComparisonOperator.LTE,
-                        value=15.0
+                        value=LOW_PER_THRESHOLD
                     ),
                     ScreeningFilter(
                         field="per",
@@ -234,7 +244,7 @@ class ScreeningService:
                     ScreeningFilter(
                         field="dividend_yield",
                         operator=ComparisonOperator.GTE,
-                        value=3.0
+                        value=HIGH_DIVIDEND_THRESHOLD
                     )
                 ],
                 sort=ScreeningSort(field="dividend_yield", order=ScreeningSortOrder.DESC)
@@ -253,7 +263,7 @@ class ScreeningService:
                     ScreeningFilter(
                         field="market_cap",
                         operator=ComparisonOperator.GTE,
-                        value=100000  # 1000億円 (millions)
+                        value=LARGE_CAP_THRESHOLD_MILLIONS
                     )
                 ],
                 sort=ScreeningSort(field="market_cap", order=ScreeningSortOrder.DESC)
@@ -267,12 +277,12 @@ class ScreeningService:
                     ScreeningFilter(
                         field="equity_ratio",
                         operator=ComparisonOperator.GTE,
-                        value=50.0
+                        value=STABLE_EQUITY_RATIO_THRESHOLD
                     ),
                     ScreeningFilter(
                         field="current_ratio",
                         operator=ComparisonOperator.GTE,
-                        value=150.0
+                        value=STABLE_CURRENT_RATIO_THRESHOLD
                     )
                 ],
                 sort=ScreeningSort(field="equity_ratio", order=ScreeningSortOrder.DESC)
@@ -286,12 +296,12 @@ class ScreeningService:
                     ScreeningFilter(
                         field="revenue_growth",
                         operator=ComparisonOperator.GTE,
-                        value=20.0
+                        value=GROWTH_REVENUE_THRESHOLD
                     ),
                     ScreeningFilter(
                         field="income_growth",
                         operator=ComparisonOperator.GTE,
-                        value=20.0
+                        value=GROWTH_INCOME_THRESHOLD
                     )
                 ],
                 sort=ScreeningSort(field="revenue_growth", order=ScreeningSortOrder.DESC)

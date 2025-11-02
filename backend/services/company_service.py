@@ -16,6 +16,14 @@ from schemas.company import (
 )
 
 
+def sanitize_search_term(term: str) -> str:
+    """
+    Sanitize search term for SQL LIKE operations.
+    Escapes SQL wildcard characters (%, _) to prevent unintended pattern matching.
+    """
+    return term.replace('%', '\\%').replace('_', '\\_')
+
+
 class CompanyService:
     """Service class for company-related business logic"""
 
@@ -39,7 +47,8 @@ class CompanyService:
         
         # Apply search filters
         if search_params.q:
-            search_term = f"%{search_params.q}%"
+            sanitized_term = sanitize_search_term(search_params.q)
+            search_term = f"%{sanitized_term}%"
             query = query.filter(
                 or_(
                     Company.company_name_jp.ilike(search_term),

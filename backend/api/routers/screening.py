@@ -1,9 +1,11 @@
 """Screening API endpoints"""
 
 import math
+import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from core.database import get_db
 from core.rate_limiter import limiter, RateLimits
@@ -14,6 +16,9 @@ from schemas.screening import (
     ScreeningPresetsResponse,
     ScreeningFieldsResponse
 )
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/screening",
@@ -77,8 +82,15 @@ async def execute_screening(
             applied_filters=screening_request.filters,
             execution_time_ms=execution_time
         )
+    except ValueError as e:
+        logger.warning(f"Invalid screening request: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid filter: {str(e)}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in screening: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error in screening: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/presets", response_model=ScreeningPresetsResponse)
@@ -151,8 +163,15 @@ async def execute_preset_screening(
             applied_filters=preset.filters,
             execution_time_ms=execution_time
         )
+    except ValueError as e:
+        logger.warning(f"Invalid preset screening request: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid filter: {str(e)}")
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in preset screening: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error in preset screening: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/fields", response_model=ScreeningFieldsResponse)
