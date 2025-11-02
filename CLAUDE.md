@@ -87,17 +87,21 @@ npm run build           # Production build
 1. **Data Collection**: 
    - ✅ **EDINET API integration** - Japanese financial reports (Issue #6)
    - ✅ **XBRL Parser** - Financial data extraction from EDINET (Issue #6)
-   - 🔄 Yahoo Finance data fetching (planned)
+   - ✅ **Yahoo Finance integration** - Real-time & historical stock prices (Issue #8, PR #75)
 2. **Data Processing**: 
    - ✅ **Basic financial indicators** - ROE, equity ratio, operating margin (Issue #6)
    - ✅ **Advanced financial indicator calculations** - 60+ indicators across 6 categories (Issue #13)
-3. **API Endpoints**: Company search, screening, comparison, data export (planned)
+3. **API Endpoints**: 
+   - ✅ **Stock Price APIs** - Latest, historical, chart data endpoints (PR #75)
+   - 🔄 Company search, screening, comparison, data export (planned)
 7. **Testing Infrastructure** (Completed - 2025/11/01):
    - ✅ **Comprehensive test suite** - 91 tests with 78% coverage (Issue #32)
    - ✅ **Optimized CI/CD pipeline** - 60-80% GitHub Actions credit savings (PR #58)
    - 🔄 **Test Coverage Monitoring** - Future improvements (Issues #59-61)
 4. **Frontend**: Company details, screening interface, chart visualization (planned)
-5. **Batch Jobs**: Daily and quarterly data updates (planned)
+5. **Batch Jobs**: 
+   - ✅ **Daily stock price updates** - Automated Yahoo Finance data collection (PR #75)
+   - 🔄 Quarterly financial data updates (planned)
 6. **User Features** (New - 2025/11/01):
    - 🔄 **Google OAuth Authentication** - Replacing JWT auth (Issue #34)
    - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50)
@@ -204,6 +208,11 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
   - requests updated to 2.32.4
   - black updated to 24.3.0
   - sentry-sdk updated to 1.45.1
+- ✅ **Yahoo Finance integration completed** (Issue #8, PR #75) - 2025/11/02
+  - Complete stock price data collection system
+  - 5 REST API endpoints with comprehensive testing
+  - Daily batch job automation ready
+  - Security hardening and performance optimization applied
 - 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority
