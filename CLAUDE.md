@@ -164,11 +164,11 @@ gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
 gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
 ```
 
-### Issue Status (as of 2025/11/01 - Updated)
-- **Total Issues**: 48 (Including new test-related issues)
-- **Closed**: 11 (#6, #13, #17, #27, #30, #32, #33, #63, #64, #65, #66)
-- **Open**: 37
-- **High Priority**: #31, #34, #35, #50, #51
+### Issue Status (as of 2025/11/08 - Updated)
+- **Total Issues**: 87 (After comprehensive cleanup and new feature additions)
+- **Closed**: 16 (#6, #13, #17, #27, #30, #32, #33, #35, #37, #63, #64, #65, #66, #74, #80-82)
+- **Open**: 71 
+- **High Priority**: #34, #83, #85, #88 (Core development priorities)
 
 ## External APIs Used
 
@@ -189,12 +189,13 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
 - ✅ **Core API endpoints** for business logic - 22 endpoints implemented (Issue #35 - PR #76 - Completed 2025/11/08)
 
-### Performance & Quality Improvements
-- **Database index optimization** - Performance improvement for queries (Issue #88)
-- **Redis cache implementation** - Cache static data (Issue #89)
-- **Test coverage expansion** - Error cases and edge cases (Issue #90)
-- **Export size limits** - Resource exhaustion prevention (Issue #91)
-- **Stock price auto-update** - Daily batch job setup (Issue #85)
+### Performance & Quality Improvements (Active Development)
+- **Stock price auto-update** - Daily batch job setup (Issue #85) 🔥 HIGH PRIORITY
+- **Database index optimization** - Performance improvement for queries (Issue #88) 🔥 HIGH PRIORITY  
+- **Export API completion** - Complete remaining endpoints & security (Issue #83) 🔥 HIGH PRIORITY
+- **Redis cache implementation** - Cache static data (Issue #89) ⚡ MEDIUM PRIORITY
+- **Test coverage expansion** - Error cases and edge cases (Issue #90) ⚡ MEDIUM PRIORITY
+- **Comprehensive logging** - Production monitoring & debugging (Issue #84) ⚡ MEDIUM PRIORITY
 - **Data freshness check** - Auto-detect stale data (Issue #86)
 
 ### Development Status
@@ -222,14 +223,81 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
   - 比較API - 5 endpoints (comparison, templates, rankings)
   - エクスポートAPI - 5 endpoints (CSV/Excel export, templates)
   - Total: 22 new endpoints with 78% test coverage
+- ✅ **Automatic Stock Price Update Batch Job completed** (Issue #85) - 2025/11/08
+  - Daily cron job (16:00 JST weekdays) with Docker scheduler service
+  - Japanese trading calendar with holiday detection
+  - Slack/Email notification system for batch results
+  - Error handling and retry mechanisms (3x with exponential backoff)
+  - Production-ready Cloud Scheduler configuration (Terraform)
 - 🚀 User features in planning (Issues #34, #49-53)
 
-### Next Session Priority
-1. **Stock price auto-update batch job** (Issue #85) - Critical for data freshness
-2. **Database index optimization** (Issue #88) - Performance improvement
-3. **Google OAuth Authentication** (Issue #34) - User management base
-4. **Watchlist & Alert Features** (Issues #50, #51) - Core user features  
-5. **Frontend Integration** - Connect to new Core APIs
+### Next Session Priority (Updated 2025/11/08 - Post Issue #85)
+1. **Database index optimization** (Issue #88) - Performance improvement (target: 40ms → 20ms) 🔥
+2. **Frontend development start** (Issue #22) - Next.js setup after DB optimization 🔥
+3. **Google OAuth Authentication** (Issue #34) - Unblocks user features (#50, #51, #52) 🔥
+4. **Export API completion** (Issue #83) - Finish remaining endpoints (Screening, Comparison, Financial) 🔥
+5. **Test coverage enhancement** (Issue #90) - Error cases & integration tests ⚡
+
+### GitHub Issue Cleanup Completed (2025/11/08)
+- ✅ **5 duplicate issues** closed and consolidated (#37, #74, #80-82)
+- ✅ **Dependency relationships** clarified with comments and blocking notices
+- ✅ **Priority labels** standardized across all issues
+- ✅ **Development roadmap** optimized for efficiency
+
+## Docker Safe Operation Guidelines ⚠️
+
+### CRITICAL: Data Protection 
+
+**永続化されたデータ**: 以下のボリュームには重要なデータが保存されています
+- `postgres_data` - 企業マスター、財務データ、株価履歴
+- `redis_data` - APIキャッシュ、セッション情報
+- `scheduler_logs` - バッチ実行履歴、エラーログ
+
+### ❌ 絶対に実行してはいけないコマンド
+
+```bash
+# データ完全消失の危険
+docker system prune -a --volumes  # 全データ削除
+docker volume prune                # 未使用ボリューム削除  
+docker compose down -v            # ボリューム含めて削除
+docker volume rm postgres_data    # データベース削除
+```
+
+### ✅ 安全な開発コマンド
+
+```bash
+# 安全なコンテナ操作
+docker compose restart            # サービス再起動
+docker compose stop               # 停止 (データ保持)
+docker compose build --no-cache   # イメージ再ビルド
+docker compose logs --tail=100    # ログ確認
+
+# 安全なクリーンアップ  
+docker image prune                # 未使用イメージのみ削除
+docker container prune            # 停止コンテナのみ削除
+
+# Scheduler操作
+docker compose --profile scheduler up -d    # バッチジョブ開始
+docker compose --profile scheduler down     # バッチジョブ停止
+```
+
+### 🔄 スケジューラー運用
+
+```bash
+# バッチジョブ状態確認
+docker exec stock_code_scheduler crontab -l
+docker compose logs scheduler
+
+# 手動バッチ実行 (テスト用)
+cd backend && source venv/bin/activate
+python -m batch.daily_update
+```
+
+### 🆘 データ復旧が必要な場合
+
+1. **即座に作業停止**
+2. **バックアップ確認** (将来実装予定)
+3. **Issue作成**: データ復旧の記録
 
 ## Troubleshooting
 
@@ -237,8 +305,9 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 
 - **Database connection**: Check `DATABASE_URL` in `.env`
 - **Port conflicts**: Use `lsof -i :PORT` to find conflicts
-- **Docker issues**: Run `docker compose down -v` and rebuild
+- **Docker issues**: Use safe commands above, avoid `-v` flag
 - **API errors**: Check logs with `docker compose logs backend`
+- **Cron not working**: Check `docker compose --profile scheduler logs`
 
 ### Database Migrations (Alembic) ✅ Completed
 

@@ -105,6 +105,37 @@ services:
       - stock_code_network
     command: npm run dev
 
+  # Scheduler Service (Daily batch jobs) - Dedicated cron container
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/docker/Dockerfile.cron
+    container_name: stock_code_scheduler
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stockcode}:${POSTGRES_PASSWORD:-stockcode123}@postgres:5432/${POSTGRES_DB:-stockcode}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here-change-in-production}
+      # API Keys (if needed)
+      EDINET_API_KEY: ${EDINET_API_KEY:-}
+      JPX_API_KEY: ${JPX_API_KEY:-}
+      # Timezone
+      TZ: Asia/Tokyo
+      # Python path
+      PYTHONPATH: /app
+    volumes:
+      - ./backend:/app
+      - scheduler_logs:/var/log
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - stock_code_network
+    profiles:
+      - scheduler
+
   # Celery Worker (Optional - for background tasks)
   # celery_worker:
   #   build:
@@ -146,6 +177,7 @@ volumes:
   postgres_data:
   redis_data:
   pgadmin_data:
+  scheduler_logs:
 
 networks:
   stock_code_network:

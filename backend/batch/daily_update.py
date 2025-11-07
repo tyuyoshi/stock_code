@@ -5,15 +5,39 @@ from datetime import datetime, timedelta
 from typing import List
 import asyncio
 
-from ..services.edinet_client import EDINETClient
-from ..services.data_processor import DataProcessor
-from ..services.yahoo_finance_client import YahooFinanceClient
-from ..core.database import SessionLocal
-from ..models.company import Company
-from ..models.financial import StockPrice, FinancialIndicator
+try:
+    from ..services.edinet_client import EDINETClient
+    from ..services.data_processor import DataProcessor
+    from ..services.yahoo_finance_client import YahooFinanceClient
+    from ..services.trading_calendar import is_trading_day
+    from ..services.notification import (
+        NotificationService, 
+        BatchJobResult, 
+        NotificationLevel,
+        notify_batch_result
+    )
+    from ..core.database import SessionLocal
+    from ..models.company import Company
+    from ..models.financial import StockPrice, FinancialIndicator
+    from ..core.config import settings
+except ImportError:
+    from services.edinet_client import EDINETClient
+    from services.data_processor import DataProcessor
+    from services.yahoo_finance_client import YahooFinanceClient
+    from services.trading_calendar import is_trading_day
+    from services.notification import (
+        NotificationService, 
+        BatchJobResult, 
+        NotificationLevel,
+        notify_batch_result
+    )
+    from core.database import SessionLocal
+    from models.company import Company
+    from models.financial import StockPrice, FinancialIndicator
+    from core.config import settings
+
 from sqlalchemy.exc import IntegrityError
 from redis import Redis
-from ..core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +50,7 @@ class DailyUpdateJob:
         self.edinet_client = EDINETClient()
         self.data_processor = DataProcessor()
         self.db = SessionLocal()
+        self.notification_service = NotificationService()
         
         # Initialize Redis client for caching (optional)
         self.redis_client = None
@@ -40,26 +65,79 @@ class DailyUpdateJob:
     
     async def run(self):
         """Main entry point for daily update job"""
+        start_time = datetime.now()
+        error_messages = []
+        total_companies = 0
+        successful_companies = 0
+        
         try:
             logger.info("Starting daily update job")
             
+            # Check if today is a trading day
+            if not is_trading_day():
+                logger.info("Today is not a trading day, skipping update")
+                return
+            
             # Get list of companies to update
             companies = self.get_active_companies()
-            logger.info(f"Found {len(companies)} companies to update")
+            total_companies = len(companies)
+            logger.info(f"Found {total_companies} companies to update")
             
             # Update stock prices
-            await self.update_stock_prices(companies)
+            successful_companies = await self.update_stock_prices(companies)
             
-            # Update financial indicators
-            await self.update_financial_indicators(companies)
+            # Update financial indicators (if needed)
+            # await self.update_financial_indicators(companies)
             
             # Clean up old data
             self.cleanup_old_data()
             
-            logger.info("Daily update job completed successfully")
+            end_time = datetime.now()
+            execution_time = (end_time - start_time).total_seconds()
+            
+            # Create result object
+            status = "success" if successful_companies == total_companies else "partial_success"
+            result = BatchJobResult(
+                job_name="Daily Stock Price Update",
+                start_time=start_time,
+                end_time=end_time,
+                status=status,
+                total_items=total_companies,
+                successful_items=successful_companies,
+                failed_items=total_companies - successful_companies,
+                error_messages=error_messages,
+                execution_time_seconds=execution_time
+            )
+            
+            # Send notification
+            self.notification_service.notify_batch_result(result)
+            
+            logger.info(f"Daily update job completed. Success: {successful_companies}/{total_companies}")
             
         except Exception as e:
-            logger.error(f"Daily update job failed: {e}")
+            end_time = datetime.now()
+            execution_time = (end_time - start_time).total_seconds()
+            
+            error_msg = f"Daily update job failed: {e}"
+            logger.error(error_msg)
+            error_messages.append(error_msg)
+            
+            # Create failure result
+            result = BatchJobResult(
+                job_name="Daily Stock Price Update",
+                start_time=start_time,
+                end_time=end_time,
+                status="failure",
+                total_items=total_companies,
+                successful_items=successful_companies,
+                failed_items=total_companies - successful_companies,
+                error_messages=error_messages,
+                execution_time_seconds=execution_time
+            )
+            
+            # Send error notification
+            self.notification_service.notify_batch_result(result, NotificationLevel.ERROR)
+            
             raise
         finally:
             self.db.close()
@@ -68,7 +146,7 @@ class DailyUpdateJob:
         """Get list of active companies"""
         return self.db.query(Company).all()
     
-    async def update_stock_prices(self, companies: List[Company]):
+    async def update_stock_prices(self, companies: List[Company]) -> int:
         """Update stock prices for all companies"""
         logger.info(f"Starting stock price update for {len(companies)} companies")
         
@@ -150,6 +228,7 @@ class DailyUpdateJob:
                 await asyncio.sleep(2)
         
         logger.info(f"Stock price update completed. Success: {success_count}, Errors: {error_count}")
+        return success_count
     
     async def update_financial_indicators(self, companies: List[Company]):
         """Calculate and update financial indicators"""
