@@ -1,0 +1,86 @@
+# Dockerfile for dedicated cron scheduler
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies including cron
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    cron \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create log directory and set permissions
+RUN mkdir -p /var/log && \
+    touch /var/log/cron.log && \
+    chmod 666 /var/log/cron.log
+
+# Create cron user (avoiding permission issues)
+RUN useradd -m -u 1000 cronuser
+
+# Make shell scripts executable first
+RUN chmod +x /app/scripts/run_daily_update.sh
+
+# Set up cron environment in startup script (to avoid COPY issues)
+
+# Set Python path environment variable
+ENV PYTHONPATH=/app
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Setting up cron for Stock Code..."\n\
+\n\
+# Create crontab content directly\n\
+cat > /etc/cron.d/stock-code-cron << "EOF"\n\
+# Stock Code Daily Update Cron Jobs\n\
+# Format: minute hour day month day_of_week command\n\
+# All times are in UTC (container time)\n\
+\n\
+# Daily stock price update at 16:00 JST (07:00 UTC)\n\
+# Only runs on weekdays (Monday-Friday)\n\
+0 7 * * 1-5 /app/scripts/run_daily_update.sh >> /var/log/cron.log 2>&1\n\
+\n\
+# Health check every 6 hours\n\
+0 */6 * * * echo "$(date): Stock Code Scheduler is running" >> /var/log/cron.log 2>&1\n\
+\n\
+# Log rotation weekly (Sunday at 01:00 JST / 16:00 UTC Saturday)\n\
+0 16 * * 6 find /var/log -name "*.log" -type f -mtime +7 -delete >> /var/log/cron.log 2>&1\n\
+EOF\n\
+\n\
+# Set proper permissions\n\
+chmod 0644 /etc/cron.d/stock-code-cron\n\
+chown root:root /etc/cron.d/stock-code-cron\n\
+\n\
+echo "Installing crontab..."\n\
+crontab /etc/cron.d/stock-code-cron\n\
+\n\
+echo "Starting cron daemon..."\n\
+cron\n\
+\n\
+echo "Cron daemon started successfully"\n\
+echo "Showing crontab contents:"\n\
+crontab -l\n\
+\n\
+echo "Tailing cron log..."\n\
+# Create log file if it doesn not exist\n\
+touch /var/log/cron.log\n\
+tail -f /var/log/cron.log' > /start-cron.sh && \
+    chmod +x /start-cron.sh
+
+# Use root for cron operations (required for cron daemon)
+USER root
+
+# Default command to start cron and tail logs
+CMD ["/start-cron.sh"]

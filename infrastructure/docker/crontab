@@ -1,0 +1,13 @@
+# Stock Code Daily Update Cron Jobs
+# Format: minute hour day month day_of_week command
+# All times are in UTC (container time)
+
+# Daily stock price update at 16:00 JST (07:00 UTC)
+# Only runs on weekdays (Monday-Friday)
+0 7 * * 1-5 /app/scripts/run_daily_update.sh >> /var/log/cron.log 2>&1
+
+# Health check every 6 hours
+0 */6 * * * echo "$(date): Stock Code Scheduler is running" >> /var/log/cron.log 2>&1
+
+# Log rotation weekly (Sunday at 01:00 JST / 16:00 UTC Saturday)
+0 16 * * 6 find /var/log -name "*.log" -type f -mtime +7 -delete >> /var/log/cron.log 2>&1
