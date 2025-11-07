@@ -186,8 +186,8 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - **Google OAuth Authentication** implementation in progress (Issue #34)
 
 ### Missing Core Features
-- **Database migrations** with Alembic - setup method documented, needs env.py configuration (Issue #31)
-- **Core API endpoints** for business logic (Issue #35)
+- ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31)
+- ✅ **Core API endpoints** for business logic - Complete implementation (Issue #35)
 
 ### Performance & Quality Improvements (New Issues)
 - **Test coverage expansion** - unit tests, error cases, edge cases (Issue #46)
@@ -213,13 +213,19 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
   - 5 REST API endpoints with comprehensive testing
   - Daily batch job automation ready
   - Security hardening and performance optimization applied
+- ✅ **Core API Endpoints completed** (Issue #35) - 2025/11/02
+  - 企業情報API - Company search, details, financials, indicators
+  - スクリーニングAPI - Custom filters, presets, 6 predefined screening types
+  - 比較API - Multi-company comparison, templates, rankings
+  - エクスポートAPI - CSV/Excel export, templates (base implementation)
+  - Comprehensive test coverage and documentation
 - 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority
-1. **Database migration system** (Issue #31) - Infrastructure foundation  
-2. **Google OAuth Authentication** (Issue #34) - User management base
-3. **Core API endpoints** (Issue #35) - Business logic APIs
-4. **Watchlist & Alert Features** (Issues #50, #51) - Core user features
+1. **Google OAuth Authentication** (Issue #34) - User management base
+2. **Watchlist & Alert Features** (Issues #50, #51) - Core user features  
+3. **Frontend Integration** - Connect to new Core APIs
+4. **Export API Enhancement** - Complete screening/comparison export
 5. **Test Suite Improvements** (Issues #59-61) - Extend coverage, CI/CD monitoring
 
 ## Troubleshooting

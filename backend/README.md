@@ -465,12 +465,50 @@ curl "http://localhost:8000/api/v1/stock-prices/?tickers=7203&tickers=9984"
 
 ### API Endpoints
 
+#### Stock Prices
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/v1/stock-prices/{ticker}/latest` | GET | Latest price with change calculation |
 | `/api/v1/stock-prices/{ticker}/historical` | GET | Historical data with date filtering |
 | `/api/v1/stock-prices/{ticker}/chart` | GET | Chart data for various periods |
 | `/api/v1/stock-prices/` | GET | Multiple tickers (use `?tickers=A&tickers=B`) |
+
+#### Companies (New - Issue #35)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/companies/` | GET | Company list with search and pagination |
+| `/api/v1/companies/{id}` | GET | Company details by ID |
+| `/api/v1/companies/{id}/financials` | GET | Company financial statements |
+| `/api/v1/companies/{id}/indicators` | GET | Company financial indicators |
+| `/api/v1/companies/` | POST | Create new company |
+| `/api/v1/companies/{id}` | PUT | Update company information |
+| `/api/v1/companies/{id}` | DELETE | Delete company |
+
+#### Screening (New - Issue #35)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/screening/` | POST | Execute custom screening filters |
+| `/api/v1/screening/presets` | GET | Get predefined screening presets |
+| `/api/v1/screening/presets/{preset_id}` | GET | Execute preset screening |
+| `/api/v1/screening/fields` | GET | Get available screening fields |
+
+#### Company Comparison (New - Issue #35)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/compare/` | POST | Compare multiple companies |
+| `/api/v1/compare/templates` | GET | Get comparison templates |
+| `/api/v1/compare/templates/{template_id}` | POST | Compare using template |
+| `/api/v1/compare/metrics` | GET | Get available comparison metrics |
+
+#### Data Export (New - Issue #35)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/export/companies` | POST | Export companies data (CSV/Excel) |
+| `/api/v1/export/screening` | POST | Export screening results |
+| `/api/v1/export/comparison` | POST | Export comparison results |
+| `/api/v1/export/financial-data` | POST | Export financial data |
+| `/api/v1/export/templates` | GET | Get export templates |
+| `/api/v1/export/formats` | GET | Get supported export formats |
 
 ### Daily Batch Jobs
 

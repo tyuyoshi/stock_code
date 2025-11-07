@@ -6,23 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-import sys
-from pathlib import Path
-
-# Add parent directory to path for imports
-if __name__ == "__main__":
-    sys.path.append(str(Path(__file__).parent.parent.parent))
-    from core.database import get_db
-    from models.company import Company
-    from models.financial import StockPrice
-    from services.yahoo_finance_client import YahooFinanceClient
-    from core.dependencies import get_yahoo_finance_client
-else:
-    from ...core.database import get_db
-    from ...models.company import Company
-    from ...models.financial import StockPrice
-    from ...services.yahoo_finance_client import YahooFinanceClient
-    from ...core.dependencies import get_yahoo_finance_client
+from core.database import get_db
+from models.company import Company
+from models.financial import StockPrice
+from services.yahoo_finance_client import YahooFinanceClient
+from core.dependencies import get_yahoo_finance_client
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/stock-prices", tags=["stock-prices"])
@@ -166,7 +154,7 @@ async def get_latest_stock_price(
         change=change,
         change_percent=change_percent,
         currency="JPY",
-        last_updated=latest_price.created_at
+        last_updated=latest_price.date
     )
 
 
