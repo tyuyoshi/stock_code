@@ -93,7 +93,7 @@ async def export_screening_results(
     **Note**: Limited to 10,000 rows per export for performance reasons.
     """
     # TODO: Implement screening results export
-    raise HTTPException(status_code=501, detail="Screening export not yet implemented")
+    raise HTTPException(status_code=404, detail="Export format not available")
 
 
 @router.post("/comparison")
@@ -125,7 +125,7 @@ async def export_comparison(
     - Summary statistics
     """
     # TODO: Implement comparison export
-    raise HTTPException(status_code=501, detail="Comparison export not yet implemented")
+    raise HTTPException(status_code=404, detail="Export format not available")
 
 
 @router.post("/financial-data")
@@ -158,7 +158,7 @@ async def export_financial_data(
     Multi-sheet Excel files are created with separate sheets for each data type.
     """
     # TODO: Implement financial data export
-    raise HTTPException(status_code=501, detail="Financial data export not yet implemented")
+    raise HTTPException(status_code=404, detail="Export format not available")
 
 
 @router.get("/templates", response_model=ExportTemplatesResponse)

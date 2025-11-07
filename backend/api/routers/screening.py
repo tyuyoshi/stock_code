@@ -88,9 +88,6 @@ async def execute_screening(
     except SQLAlchemyError as e:
         logger.error(f"Database error in screening: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-    except Exception as e:
-        logger.error(f"Unexpected error in screening: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/presets", response_model=ScreeningPresetsResponse)
