@@ -185,14 +185,17 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
 - **Google OAuth Authentication** implementation in progress (Issue #34)
 
-### Missing Core Features
-- ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31)
-- ✅ **Core API endpoints** for business logic - Complete implementation (Issue #35)
+### Core Features Completed
+- ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
+- ✅ **Core API endpoints** for business logic - 22 endpoints implemented (Issue #35 - PR #76 - Completed 2025/11/08)
 
-### Performance & Quality Improvements (New Issues)
-- **Test coverage expansion** - unit tests, error cases, edge cases (Issue #46)
-- **Performance optimization** - streaming, caching, memory usage (Issue #47)  
-- **Error handling standardization** - retry logic, rate limiting (Issue #48)
+### Performance & Quality Improvements
+- **Database index optimization** - Performance improvement for queries (Issue #88)
+- **Redis cache implementation** - Cache static data (Issue #89)
+- **Test coverage expansion** - Error cases and edge cases (Issue #90)
+- **Export size limits** - Resource exhaustion prevention (Issue #91)
+- **Stock price auto-update** - Daily batch job setup (Issue #85)
+- **Data freshness check** - Auto-detect stale data (Issue #86)
 
 ### Development Status
 - ✅ Initial setup phase completed
@@ -213,20 +216,20 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
   - 5 REST API endpoints with comprehensive testing
   - Daily batch job automation ready
   - Security hardening and performance optimization applied
-- ✅ **Core API Endpoints completed** (Issue #35) - 2025/11/02
-  - 企業情報API - Company search, details, financials, indicators
-  - スクリーニングAPI - Custom filters, presets, 6 predefined screening types
-  - 比較API - Multi-company comparison, templates, rankings
-  - エクスポートAPI - CSV/Excel export, templates (base implementation)
-  - Comprehensive test coverage and documentation
+- ✅ **Core API Endpoints completed** (Issue #35, PR #76) - 2025/11/08
+  - 企業情報API - 7 endpoints (CRUD, financials, indicators)
+  - スクリーニングAPI - 5 endpoints (filters, presets, saved searches)
+  - 比較API - 5 endpoints (comparison, templates, rankings)
+  - エクスポートAPI - 5 endpoints (CSV/Excel export, templates)
+  - Total: 22 new endpoints with 78% test coverage
 - 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority
-1. **Google OAuth Authentication** (Issue #34) - User management base
-2. **Watchlist & Alert Features** (Issues #50, #51) - Core user features  
-3. **Frontend Integration** - Connect to new Core APIs
-4. **Export API Enhancement** - Complete screening/comparison export
-5. **Test Suite Improvements** (Issues #59-61) - Extend coverage, CI/CD monitoring
+1. **Stock price auto-update batch job** (Issue #85) - Critical for data freshness
+2. **Database index optimization** (Issue #88) - Performance improvement
+3. **Google OAuth Authentication** (Issue #34) - User management base
+4. **Watchlist & Alert Features** (Issues #50, #51) - Core user features  
+5. **Frontend Integration** - Connect to new Core APIs
 
 ## Troubleshooting
 
