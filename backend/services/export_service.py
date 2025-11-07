@@ -52,7 +52,7 @@ class ExportService:
                 indicator = (
                     db.query(FinancialIndicator)
                     .filter(FinancialIndicator.company_id == company.id)
-                    .order_by(FinancialIndicator.calculation_date.desc())
+                    .order_by(FinancialIndicator.date.desc())
                     .first()
                 )
                 indicators_map[company.id] = indicator

@@ -93,7 +93,7 @@ class FinancialIndicatorsResponse(BaseModel):
     """Schema for company financial indicators response"""
     company_id: int
     indicators: dict = Field(default_factory=dict, description="Financial indicators by category")
-    calculation_date: Optional[datetime] = None
+    date: Optional[datetime] = None
     period: Optional[str] = None
 
     class Config:

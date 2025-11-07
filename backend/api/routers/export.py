@@ -26,7 +26,7 @@ router = APIRouter(
 
 
 @router.post("/companies")
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.DATA_EXPORT)
 async def export_companies(
     request: Request,
     export_request: CompaniesExportRequest,
@@ -65,7 +65,7 @@ async def export_companies(
 
 
 @router.post("/screening")
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.DATA_EXPORT)
 async def export_screening_results(
     request: Request,
     export_request: ScreeningExportRequest,
@@ -97,7 +97,7 @@ async def export_screening_results(
 
 
 @router.post("/comparison")
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.DATA_EXPORT)
 async def export_comparison(
     request: Request,
     export_request: ComparisonExportRequest,
@@ -129,7 +129,7 @@ async def export_comparison(
 
 
 @router.post("/financial-data")
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.DATA_EXPORT)
 async def export_financial_data(
     request: Request,
     export_request: FinancialDataExportRequest,

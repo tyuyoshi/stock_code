@@ -131,7 +131,7 @@ async def get_company_indicators(
 
 
 @router.post("/", response_model=CompanyResponse, status_code=201)
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.EXPENSIVE)
 async def create_company(
     request: Request,
     company_data: CompanyCreate,
@@ -146,7 +146,7 @@ async def create_company(
 
 
 @router.put("/{company_id}", response_model=CompanyResponse)
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.EXPENSIVE)
 async def update_company(
     request: Request,
     company_id: int,
@@ -166,7 +166,7 @@ async def update_company(
 
 
 @router.delete("/{company_id}", status_code=204)
-@limiter.limit(RateLimits.STRICT)
+@limiter.limit(RateLimits.EXPENSIVE)
 async def delete_company(
     request: Request,
     company_id: int,

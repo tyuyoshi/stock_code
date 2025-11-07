@@ -67,7 +67,7 @@ class CompareService:
             indicator = (
                 db.query(FinancialIndicator)
                 .filter(FinancialIndicator.company_id == company_id)
-                .order_by(desc(FinancialIndicator.calculation_date))
+                .order_by(desc(FinancialIndicator.date))
                 .first()
             )
             indicators[company_id] = indicator

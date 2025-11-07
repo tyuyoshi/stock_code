@@ -154,7 +154,7 @@ async def get_latest_stock_price(
         change=change,
         change_percent=change_percent,
         currency="JPY",
-        last_updated=latest_price.created_at
+        last_updated=latest_price.date
     )
 
 

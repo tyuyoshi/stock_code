@@ -51,14 +51,14 @@ class ScreeningService:
         "roa": FinancialIndicator.roa,
         "operating_margin": FinancialIndicator.operating_margin,
         "net_margin": FinancialIndicator.net_margin,
-        "equity_ratio": FinancialIndicator.equity_ratio,
+        # "equity_ratio": FinancialIndicator.equity_ratio,  # Not available in model
         "debt_to_equity": FinancialIndicator.debt_to_equity,
         "current_ratio": FinancialIndicator.current_ratio,
         "per": FinancialIndicator.per,
         "pbr": FinancialIndicator.pbr,
         "dividend_yield": FinancialIndicator.dividend_yield,
-        "revenue_growth": FinancialIndicator.revenue_growth,
-        "income_growth": FinancialIndicator.income_growth,
+        "revenue_growth": FinancialIndicator.revenue_growth_yoy,
+        "income_growth": FinancialIndicator.earnings_growth_yoy,
     }
 
     @staticmethod
@@ -76,9 +76,10 @@ class ScreeningService:
                 FinancialIndicator,
                 and_(
                     Company.id == FinancialIndicator.company_id,
-                    FinancialIndicator.calculation_date == (
-                        db.query(func.max(FinancialIndicator.calculation_date))
+                    FinancialIndicator.date == (
+                        db.query(func.max(FinancialIndicator.date))
                         .filter(FinancialIndicator.company_id == Company.id)
+                        .correlate(Company)
                         .scalar_subquery()
                     )
                 )

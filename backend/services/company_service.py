@@ -139,7 +139,7 @@ class CompanyService:
         statements = (
             db.query(FinancialStatement)
             .filter(FinancialStatement.company_id == company_id)
-            .order_by(desc(FinancialStatement.period_end_date))
+            .order_by(desc(FinancialStatement.period_end))
             .limit(limit)
             .all()
         )
@@ -150,10 +150,10 @@ class CompanyService:
         
         for stmt in statements:
             if not latest_period:
-                latest_period = stmt.period_end_date.strftime("%Y-%m-%d") if stmt.period_end_date else None
+                latest_period = stmt.period_end.strftime("%Y-%m-%d") if stmt.period_end else None
             
             financial_data.append({
-                "period_end_date": stmt.period_end_date.isoformat() if stmt.period_end_date else None,
+                "period_end_date": stmt.period_end.isoformat() if stmt.period_end else None,
                 "statement_type": stmt.statement_type,
                 "revenue": stmt.revenue,
                 "operating_income": stmt.operating_income,
@@ -186,7 +186,7 @@ class CompanyService:
         indicator = (
             db.query(FinancialIndicator)
             .filter(FinancialIndicator.company_id == company_id)
-            .order_by(desc(FinancialIndicator.calculation_date))
+            .order_by(desc(FinancialIndicator.date))
             .first()
         )
         
@@ -194,7 +194,7 @@ class CompanyService:
             return FinancialIndicatorsResponse(
                 company_id=company_id,
                 indicators={},
-                calculation_date=None,
+                date=None,
                 period=None
             )
         
@@ -244,6 +244,6 @@ class CompanyService:
         return FinancialIndicatorsResponse(
             company_id=company_id,
             indicators=indicators_dict,
-            calculation_date=indicator.calculation_date,
-            period=indicator.period
+            date=indicator.date,
+            period=None
         )
