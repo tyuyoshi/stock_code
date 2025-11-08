@@ -37,7 +37,12 @@ stock_code/
 ### Setup
 ```bash
 ./setup.sh              # Run initial setup
-cp .env.example .env    # Configure environment
+
+# 環境変数の設定（重要）
+# ⚠️ よくある間違い: backend/.env.example は存在しません
+# 正しい手順: ルートの .env.example を backend/.env にコピー
+cd /Users/tsuyoshi-hasegawa/Documents/workspace/github/private/stock_code
+cp .env.example backend/.env
 ```
 
 ### Development
@@ -102,11 +107,11 @@ npm run build           # Production build
 5. **Batch Jobs**: 
    - ✅ **Daily stock price updates** - Automated Yahoo Finance data collection (PR #75)
    - 🔄 Quarterly financial data updates (planned)
-6. **User Features** (New - 2025/11/01):
-   - 🔄 **Google OAuth Authentication** - Replacing JWT auth (Issue #34)
-   - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50)
-   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51)
-   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52)
+6. **User Features** (Started - 2025/11/08):
+   - ✅ **Google OAuth Authentication** - Complete OAuth 2.0 flow with Redis sessions (Issue #34 - Completed 2025/11/08)
+   - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50) - Unblocked
+   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked
+   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52) - Unblocked
    - 🔄 **Analyst Coverage** - Rating & coverage info (Issue #49)
    - 🔄 **GA4 Integration** - Marketing analytics (Issue #53)
 
@@ -143,10 +148,13 @@ npm run build           # Production build
 ### Security Considerations
 
 - API keys stored in environment variables
-- JWT authentication implemented
+- Google OAuth 2.0 authentication implemented (Issue #34)
+- Redis-based session management with secure cookies
 - Rate limiting configured
 - SQL injection prevention via SQLAlchemy ORM
 - CORS properly configured
+- HTTPOnly cookies for XSS protection
+- Role-based access control (free/premium/enterprise)
 
 ## GitHub Integration
 
@@ -164,11 +172,11 @@ gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
 gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
 ```
 
-### Issue Status (as of 2025/11/08 - Updated after Issue #83 completion)
+### Issue Status (as of 2025/11/08 - Updated after Issue #34 completion)
 - **Total Issues**: 101 total
-- **Closed**: 19 (#6, #13, #17, #27, #30, #32, #33, #35, #37, #63, #64, #65, #66, #74, #80-82, #83, #85, #88)
-- **Open**: 82
-- **High Priority**: #22, #34, #90, #100 (Core development priorities)
+- **Closed**: 20 (#6, #13, #17, #27, #30, #32, #33, #34, #35, #37, #63, #64, #65, #66, #74, #80-82, #83, #85, #88)
+- **Open**: 81
+- **High Priority**: #22, #90, #100 (Core development priorities)
 - **New Issues** (2025/11/08): 
   - #94 (Performance test reliability - Issue #88 follow-up)
   - #95 (Query plan validation - Issue #88 follow-up)
@@ -183,6 +191,29 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 1. **EDINET API**: Japanese financial reports (https://disclosure.edinet-fsa.go.jp/)
 2. **Yahoo Finance**: Stock price data (via yfinance library)
 3. **JPX API**: Japan Exchange Group market data (optional)
+4. **Google OAuth 2.0**: User authentication (Google Identity Platform)
+
+## Google OAuth 開発環境設定
+
+**GCPプロジェクト**: `stock-code-dev`  
+**作成日**: 2025-11-08  
+**用途**: ローカル開発・動作確認
+
+### OAuth Client設定
+- **アプリケーションの種類**: ウェブアプリケーション
+- **承認済みリダイレクトURI**: `http://localhost:8000/api/v1/auth/google/callback`
+- **クライアントID**: `120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com`
+- **クライアントシークレット**: `backend/.env` に記載（Git管理外）
+
+### 環境変数設定
+```bash
+# backend/.env に以下を設定
+GOOGLE_CLIENT_ID=120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=（Google Consoleから取得したシークレット）
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
+```
+
+詳細な設定手順は `backend/README.md` の「Google OAuth 2.0 認証設定」セクションを参照
 
 ## Known Issues and TODOs
 
@@ -251,15 +282,25 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
   - Security: Field injection protection, N+1 query fix, parameterized queries
   - 12 comprehensive test cases with 78% coverage maintained
   - Follow-up issues created: #98 (code quality), #99 (performance testing), #100 (audit logging), #101 (export history)
-- 🚀 User features in planning (Issues #34, #49-53)
+- ✅ **Google OAuth Authentication completed** (Issue #34) - 2025/11/08
+  - Complete OAuth 2.0 flow with Google Identity Platform
+  - User model with investment profile (experience, style, industries)
+  - Redis-based session management (7-day TTL, secure cookies)
+  - Authentication middleware with role-based access control (free/premium/enterprise)
+  - 5 auth endpoints: login, callback, me, profile update, logout
+  - 18 comprehensive tests (unit + integration)
+  - Production-ready security (HTTPOnly cookies, email verification)
+  - Complete setup guide (backend/GOOGLE_OAUTH_SETUP.md)
+  - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
+- 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/08 - Post Issue #83 completion)
+### Next Session Priority (Updated 2025/11/08 - Post Issue #34 completion)
 
-1. **Frontend development start** (Issue #22) - Next.js setup, UI components 🔥
-2. **Google OAuth Authentication** (Issue #34) - Unblocks user features (#50, #51, #52) 🔥
-3. **Audit logging implementation** (Issue #100) - Export security and compliance 🔥
+1. **Frontend development start** (Issue #22) - Next.js setup, auth UI, protected routes 🔥
+2. **Watchlist Management** (Issue #50) - Now unblocked by Issue #34 🔥
+3. **Audit logging implementation** (Issue #100) - Export security and user tracking 🔥
 4. **Test coverage enhancement** (Issue #90) - Error cases & integration tests ⚡
-5. **Redis cache implementation** (Issue #89) - Cache static data ⚡
+5. **Alert Notifications** (Issue #51) - Now unblocked by Issue #34 ⚡
 
 ### GitHub Issue Cleanup Completed (2025/11/08)
 - ✅ **5 duplicate issues** closed and consolidated (#37, #74, #80-82)

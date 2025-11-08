@@ -8,6 +8,7 @@ Import all models here to ensure they are registered with SQLAlchemy's Base meta
 from core.database import Base
 from models.company import Company
 from models.financial import FinancialStatement, StockPrice, FinancialIndicator
+from models.user import User
 
 # Export all models and Base for Alembic
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     'FinancialStatement',
     'StockPrice',
     'FinancialIndicator',
+    'User',
 ]
 
 # This ensures all models are loaded when importing from models
