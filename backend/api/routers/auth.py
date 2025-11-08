@@ -64,29 +64,36 @@ async def google_callback(
         name = user_data.get("name")
         profile_picture_url = user_data.get("profile_picture_url")
 
-        user = db.query(User).filter(User.google_id == google_id).first()
+        try:
+            user = db.query(User).filter(User.google_id == google_id).first()
 
-        if user:
-            user.name = name
-            user.profile_picture_url = profile_picture_url
-            user.last_login_at = datetime.utcnow()
+            if user:
+                user.name = name
+                user.profile_picture_url = profile_picture_url
+                user.last_login_at = datetime.utcnow()
+            else:
+                user = User(
+                    google_id=google_id,
+                    email=email,
+                    name=name,
+                    profile_picture_url=profile_picture_url,
+                    role="free",
+                    is_active=True,
+                    email_notifications=True,
+                    price_alert_notifications=True,
+                    last_login_at=datetime.utcnow(),
+                )
+                db.add(user)
+            
             db.commit()
             db.refresh(user)
-        else:
-            user = User(
-                google_id=google_id,
-                email=email,
-                name=name,
-                profile_picture_url=profile_picture_url,
-                role="free",
-                is_active=True,
-                email_notifications=True,
-                price_alert_notifications=True,
-                last_login_at=datetime.utcnow(),
+        except Exception as db_error:
+            db.rollback()
+            logger.error(f"Database error during OAuth: {str(db_error)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Authentication failed. Please try again.",
             )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
 
         if not redis_client:
             raise HTTPException(

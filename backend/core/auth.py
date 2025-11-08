@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.dependencies import get_redis_client
 from core.sessions import get_session
+from core.constants import ROLE_HIERARCHY
 from models.user import User
 from redis import Redis
 
@@ -84,10 +85,8 @@ async def get_current_active_user(
 
 def require_role(required_role: str):
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        role_hierarchy = {"free": 0, "premium": 1, "enterprise": 2}
-
-        user_level = role_hierarchy.get(current_user.role, 0)
-        required_level = role_hierarchy.get(required_role, 0)
+        user_level = ROLE_HIERARCHY.get(current_user.role, 0)
+        required_level = ROLE_HIERARCHY.get(required_role, 0)
 
         if user_level < required_level:
             raise HTTPException(

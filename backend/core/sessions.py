@@ -54,21 +54,3 @@ def delete_session(session_token: str, redis_client: Redis) -> bool:
     redis_key = f"session:{session_token}"
     result = redis_client.delete(redis_key)
     return result > 0
-
-
-def delete_all_user_sessions(user_id: int, redis_client: Redis) -> int:
-    pattern = "session:*"
-    deleted_count = 0
-
-    for key in redis_client.scan_iter(match=pattern):
-        data = redis_client.get(key)
-        if data:
-            try:
-                session_data = json.loads(data)
-                if session_data.get("user_id") == user_id:
-                    redis_client.delete(key)
-                    deleted_count += 1
-            except json.JSONDecodeError:
-                continue
-
-    return deleted_count
