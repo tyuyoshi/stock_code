@@ -41,8 +41,10 @@ async def google_login(request: Request, redis_client: Redis = Depends(get_redis
         authorization_url = oauth_client.get_authorization_url(state=state)
         return RedirectResponse(url=authorization_url)
     except ValueError as e:
+        logger.error(f"OAuth client initialization failed: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable",
         )
 
 
