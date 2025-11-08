@@ -15,7 +15,7 @@ from schemas.export import (
     FinancialDataExportRequest,
     ExportTemplatesResponse,
     ExportFormat,
-    ExportDataType
+    ExportDataType,
 )
 
 router = APIRouter(
@@ -30,20 +30,20 @@ router = APIRouter(
 async def export_companies(
     request: Request,
     export_request: CompaniesExportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
     Export companies data in various formats.
-    
+
     **Supported Formats:**
     - CSV: Comma-separated values (UTF-8 with BOM)
     - Excel: Microsoft Excel format (.xlsx)
-    
+
     **Available Fields:**
     - Basic: ticker_symbol, company_name_jp, company_name_en, market_division, industry_name
     - Financial: market_cap, employee_count, listing_date
     - Indicators: roe, roa, operating_margin, equity_ratio, current_ratio, per, pbr, dividend_yield
-    
+
     **Example Request:**
     ```json
     {
@@ -55,7 +55,7 @@ async def export_companies(
         "filename": "selected_companies"
     }
     ```
-    
+
     **Note**: This endpoint is rate-limited more strictly due to resource usage.
     """
     try:
@@ -69,13 +69,13 @@ async def export_companies(
 async def export_screening_results(
     request: Request,
     export_request: ScreeningExportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
     Export screening results.
-    
+
     Apply the same filters used in screening and export matching companies.
-    
+
     **Example Request:**
     ```json
     {
@@ -89,11 +89,15 @@ async def export_screening_results(
         "filename": "high_roe_companies"
     }
     ```
-    
+
     **Note**: Limited to 10,000 rows per export for performance reasons.
     """
-    # TODO: Implement screening results export
-    raise HTTPException(status_code=404, detail="Export format not available")
+    try:
+        return ExportService.export_screening_results(db, export_request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
 @router.post("/comparison")
@@ -101,11 +105,11 @@ async def export_screening_results(
 async def export_comparison(
     request: Request,
     export_request: ComparisonExportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
     Export company comparison results.
-    
+
     **Example Request:**
     ```json
     {
@@ -117,15 +121,19 @@ async def export_comparison(
         "filename": "company_comparison"
     }
     ```
-    
+
     The exported file will include:
     - Company basic information
     - Selected financial metrics
     - Rankings for each metric (if requested)
     - Summary statistics
     """
-    # TODO: Implement comparison export
-    raise HTTPException(status_code=404, detail="Export format not available")
+    try:
+        return ExportService.export_comparison(db, export_request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
 @router.post("/financial-data")
@@ -133,16 +141,16 @@ async def export_comparison(
 async def export_financial_data(
     request: Request,
     export_request: FinancialDataExportRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
     Export detailed financial data for companies.
-    
+
     **Available Data Types:**
     - statements: Financial statements (P&L, Balance Sheet, Cash Flow)
     - indicators: Calculated financial indicators
     - stock_prices: Historical stock price data
-    
+
     **Example Request:**
     ```json
     {
@@ -154,11 +162,15 @@ async def export_financial_data(
         "filename": "financial_analysis"
     }
     ```
-    
+
     Multi-sheet Excel files are created with separate sheets for each data type.
     """
-    # TODO: Implement financial data export
-    raise HTTPException(status_code=404, detail="Export format not available")
+    try:
+        return ExportService.export_financial_data(db, export_request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
 @router.get("/templates", response_model=ExportTemplatesResponse)
@@ -166,25 +178,22 @@ async def export_financial_data(
 async def get_export_templates(request: Request):
     """
     Get predefined export templates.
-    
+
     Returns ready-to-use export configurations:
-    
+
     **Available Templates:**
     - **基本企業情報**: ティッカー、会社名、市場区分、業種等の基本情報
     - **財務概要**: 基本企業情報 + 主要財務指標
     - **投資分析用データ**: 投資判断に必要な主要指標一覧
     - **スクリーニング結果**: スクリーニング結果のエクスポート用
     - **企業比較レポート**: 複数企業の比較分析レポート
-    
+
     Use template configurations as starting points for custom exports.
     """
     templates = ExportService.get_export_templates()
     categories = list(set(template.category for template in templates))
-    
-    return ExportTemplatesResponse(
-        templates=templates,
-        categories=sorted(categories)
-    )
+
+    return ExportTemplatesResponse(templates=templates, categories=sorted(categories))
 
 
 @router.get("/formats")
@@ -192,7 +201,7 @@ async def get_export_templates(request: Request):
 async def get_supported_formats(request: Request):
     """
     Get information about supported export formats.
-    
+
     Returns details about available export formats and their capabilities.
     """
     formats = [
@@ -204,7 +213,11 @@ async def get_supported_formats(request: Request):
             "media_type": "text/csv",
             "supports_multiple_sheets": False,
             "max_file_size_mb": 100,
-            "best_for": ["Simple data export", "Import to other systems", "Large datasets"]
+            "best_for": [
+                "Simple data export",
+                "Import to other systems",
+                "Large datasets",
+            ],
         },
         {
             "format": "excel",
@@ -214,7 +227,11 @@ async def get_supported_formats(request: Request):
             "media_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "supports_multiple_sheets": True,
             "max_file_size_mb": 50,
-            "best_for": ["Business reports", "Data analysis", "Formatted presentations"]
+            "best_for": [
+                "Business reports",
+                "Data analysis",
+                "Formatted presentations",
+            ],
         },
         {
             "format": "pdf",
@@ -225,8 +242,8 @@ async def get_supported_formats(request: Request):
             "supports_multiple_sheets": False,
             "max_file_size_mb": 25,
             "best_for": ["Presentation reports", "Print-ready documents"],
-            "status": "planned"
-        }
+            "status": "planned",
+        },
     ]
-    
+
     return {"formats": formats}

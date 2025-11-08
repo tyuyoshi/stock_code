@@ -142,13 +142,13 @@ class ScreeningService:
                     "roa": indicator.roa,
                     "operating_margin": indicator.operating_margin,
                     "net_margin": indicator.net_margin,
-                    "equity_ratio": indicator.equity_ratio,
+                    "debt_to_equity": indicator.debt_to_equity,
                     "current_ratio": indicator.current_ratio,
                     "per": indicator.per,
                     "pbr": indicator.pbr,
                     "dividend_yield": indicator.dividend_yield,
-                    "revenue_growth": indicator.revenue_growth,
-                    "income_growth": indicator.income_growth
+                    "revenue_growth": indicator.revenue_growth_yoy,
+                    "income_growth": indicator.earnings_growth_yoy
                 }
             
             screening_results.append(result)
