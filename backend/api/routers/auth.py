@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from core.database import get_db
 from core.dependencies import get_redis_client
@@ -119,6 +120,29 @@ async def google_callback(
             
             db.commit()
             db.refresh(user)
+        
+        except IntegrityError as ie:
+            db.rollback()
+            logger.warning(
+                f"Race condition detected during user creation for google_id={google_id}, "
+                "attempting recovery...",
+                exc_info=True
+            )
+            
+            user = db.query(User).filter(User.google_id == google_id).first()
+            
+            if not user:
+                logger.error(
+                    f"Race condition recovery failed: user with google_id={google_id} not found "
+                    "after IntegrityError"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Authentication failed. Please try again.",
+                )
+            
+            logger.info(f"Recovered from race condition, using existing user_id={user.id}")
+        
         except Exception as db_error:
             db.rollback()
             logger.error(f"Database error during OAuth: {str(db_error)}", exc_info=True)

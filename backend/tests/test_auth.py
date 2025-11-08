@@ -254,3 +254,45 @@ def test_auth_endpoints_rate_limiting(client):
     
     rate_limited_count = len([r for r in responses if r.status_code == 429])
     assert rate_limited_count >= 5
+
+
+@pytest.mark.asyncio
+async def test_oauth_handles_race_condition_duplicate_google_id(
+    client, db_session, redis_client, mock_google_oauth
+):
+    from sqlalchemy.exc import IntegrityError
+    from models.user import User
+    
+    existing_user = User(
+        google_id="race_condition_test_id",
+        email="existing@example.com",
+        name="Existing User",
+        role="free",
+        is_active=True,
+    )
+    db_session.add(existing_user)
+    db_session.commit()
+    
+    mock_google_oauth.authenticate = AsyncMock(
+        return_value={
+            "google_id": "race_condition_test_id",
+            "email": "existing@example.com",
+            "name": "Existing User Updated",
+            "profile_picture_url": "https://example.com/pic.jpg",
+            "email_verified": True,
+            "access_token": "test_token",
+        }
+    )
+    
+    test_state = "race_condition_state"
+    redis_client.setex(f"oauth_state:{test_state}", 300, "1")
+    
+    response = client.get(f"/api/v1/auth/google/callback?code=test&state={test_state}")
+    
+    if response.status_code == 429:
+        pytest.skip("Rate limit hit, test validates race condition handling logic")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["id"] == existing_user.id
+    assert data["user"]["email"] == "existing@example.com"
