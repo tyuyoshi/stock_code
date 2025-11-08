@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, BinaryIO
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -30,6 +31,28 @@ from schemas.compare import CompareRequest
 class ExportService:
     """Service class for data export functionality"""
 
+    # Whitelisted fields that can be exported from indicators
+    ALLOWED_INDICATOR_FIELDS = {
+        "roe",
+        "roa",
+        "operating_margin",
+        "net_margin",
+        "debt_to_equity",
+        "current_ratio",
+        "per",
+        "pbr",
+        "dividend_yield",
+        "revenue_growth",
+        "income_growth",
+        "gross_margin",
+        "revenue_growth_yoy",
+        "earnings_growth_yoy",
+        "psr",
+        "ev_ebitda",
+        "interest_coverage",
+        "payout_ratio",
+    }
+
     @staticmethod
     def export_companies(
         db: Session, request: CompaniesExportRequest
@@ -47,14 +70,29 @@ class ExportService:
         # Get financial indicators if requested
         indicators_map = {}
         if request.include_indicators:
-            for company in companies:
-                indicator = (
-                    db.query(FinancialIndicator)
-                    .filter(FinancialIndicator.company_id == company.id)
-                    .order_by(FinancialIndicator.date.desc())
-                    .first()
+            # Bulk query to avoid N+1 problem
+            company_ids = [c.id for c in companies]
+            subquery = (
+                db.query(
+                    FinancialIndicator.company_id,
+                    func.max(FinancialIndicator.date).label("max_date"),
                 )
-                indicators_map[company.id] = indicator
+                .filter(FinancialIndicator.company_id.in_(company_ids))
+                .group_by(FinancialIndicator.company_id)
+                .subquery()
+            )
+            indicators = (
+                db.query(FinancialIndicator)
+                .join(
+                    subquery,
+                    and_(
+                        FinancialIndicator.company_id == subquery.c.company_id,
+                        FinancialIndicator.date == subquery.c.max_date,
+                    ),
+                )
+                .all()
+            )
+            indicators_map = {ind.company_id: ind for ind in indicators}
 
         # Determine fields to include
         if request.fields:
@@ -160,7 +198,7 @@ class ExportService:
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except (TypeError, AttributeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
             worksheet.column_dimensions[column_letter].width = adjusted_width
@@ -417,8 +455,13 @@ class ExportService:
         for result in results:
             row = []
             for field in fields:
-                # Check if field is in indicators dict first
-                if hasattr(result, "indicators") and result.indicators and field in result.indicators:
+                # Check if field is in indicators dict first (with whitelist security check)
+                if (
+                    field in ExportService.ALLOWED_INDICATOR_FIELDS
+                    and hasattr(result, "indicators")
+                    and result.indicators
+                    and field in result.indicators
+                ):
                     value = result.indicators[field]
                 else:
                     value = getattr(result, field, None)
@@ -478,8 +521,13 @@ class ExportService:
         # Write data rows
         for result in results:
             for col_idx, field in enumerate(fields, 1):
-                # Check if field is in indicators dict first
-                if hasattr(result, "indicators") and result.indicators and field in result.indicators:
+                # Check if field is in indicators dict first (with whitelist security check)
+                if (
+                    field in ExportService.ALLOWED_INDICATOR_FIELDS
+                    and hasattr(result, "indicators")
+                    and result.indicators
+                    and field in result.indicators
+                ):
                     value = result.indicators[field]
                 else:
                     value = getattr(result, field, None)
@@ -496,7 +544,7 @@ class ExportService:
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except (TypeError, AttributeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
             worksheet.column_dimensions[column_letter].width = adjusted_width
