@@ -62,7 +62,6 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
     
     # Session settings
-    session_secret_key: str = "your-session-secret-key-here"
     session_expire_days: int = 7
     session_cookie_name: str = "stockcode_session"
     session_cookie_httponly: bool = True

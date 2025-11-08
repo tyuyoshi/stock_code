@@ -1,6 +1,7 @@
+import logging
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -9,16 +10,20 @@ from core.dependencies import get_redis_client
 from core.auth import get_current_user, get_session_token
 from core.sessions import create_session, delete_session
 from core.config import settings
+from core.rate_limiter import limiter, RateLimits
 from models.user import User
 from schemas.user import UserResponse, UserLoginResponse, LogoutResponse, ProfileUpdate
 from services.google_oauth import get_google_oauth_client
 from redis import Redis
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.get("/google/login")
-async def google_login():
+@limiter.limit(RateLimits.AUTH)
+async def google_login(request: Request):
     try:
         oauth_client = get_google_oauth_client()
         authorization_url = oauth_client.get_authorization_url()
@@ -30,7 +35,9 @@ async def google_login():
 
 
 @router.get("/google/callback", response_model=UserLoginResponse)
+@limiter.limit(RateLimits.AUTH)
 async def google_callback(
+    request: Request,
     code: str = Query(..., description="Authorization code from Google"),
     response: Response = None,
     db: Session = Depends(get_db),
@@ -104,20 +111,26 @@ async def google_callback(
             message="Login successful",
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"OAuth authentication failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authentication failed: {str(e)}",
+            detail="Authentication failed. Please try again.",
         )
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+@limiter.limit(RateLimits.STANDARD)
+async def get_me(request: Request, current_user: User = Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
 
 @router.put("/profile", response_model=UserResponse)
+@limiter.limit(RateLimits.STANDARD)
 async def update_profile(
+    request: Request,
     profile_update: ProfileUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -136,7 +149,9 @@ async def update_profile(
 
 
 @router.post("/logout", response_model=LogoutResponse)
+@limiter.limit(RateLimits.STANDARD)
 async def logout(
+    request: Request,
     session_token: Optional[str] = Depends(get_session_token),
     redis_client: Redis = Depends(get_redis_client),
     response: Response = None,

@@ -1,4 +1,5 @@
 from typing import Dict, Any, Optional
+from urllib.parse import urlencode
 from authlib.integrations.starlette_client import OAuth
 from authlib.integrations.base_client import OAuthError
 import httpx
@@ -36,7 +37,7 @@ class GoogleOAuthClient:
         if state:
             params["state"] = state
 
-        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        query_string = urlencode(params)
         return f"{self.authorize_url}?{query_string}"
 
     async def exchange_code_for_token(self, code: str) -> Dict[str, Any]:
