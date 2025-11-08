@@ -61,7 +61,10 @@ def test_google_login_redirect(client, mock_google_oauth):
 async def test_google_callback_new_user(
     client, db_session, redis_client, mock_google_oauth
 ):
-    response = client.get("/api/v1/auth/google/callback?code=test_auth_code")
+    test_state = "test_state_token"
+    redis_client.setex(f"oauth_state:{test_state}", 300, "1")
+    
+    response = client.get(f"/api/v1/auth/google/callback?code=test_auth_code&state={test_state}")
 
     assert response.status_code == 200
     data = response.json()
@@ -92,7 +95,10 @@ async def test_google_callback_existing_user(
         }
     )
 
-    response = client.get("/api/v1/auth/google/callback?code=test_auth_code")
+    test_state = "test_state_token_existing"
+    redis_client.setex(f"oauth_state:{test_state}", 300, "1")
+
+    response = client.get(f"/api/v1/auth/google/callback?code=test_auth_code&state={test_state}")
 
     assert response.status_code == 200
     data = response.json()

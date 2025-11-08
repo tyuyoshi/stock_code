@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Query, Request
 from fastapi.responses import RedirectResponse
@@ -23,10 +24,21 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.get("/google/login")
 @limiter.limit(RateLimits.AUTH)
-async def google_login(request: Request):
+async def google_login(request: Request, redis_client: Redis = Depends(get_redis_client)):
     try:
+        if not redis_client:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Session service unavailable",
+            )
+        
+        state = secrets.token_urlsafe(32)
+        
+        redis_key = f"oauth_state:{state}"
+        redis_client.setex(redis_key, timedelta(minutes=5), "1")
+        
         oauth_client = get_google_oauth_client()
-        authorization_url = oauth_client.get_authorization_url()
+        authorization_url = oauth_client.get_authorization_url(state=state)
         return RedirectResponse(url=authorization_url)
     except ValueError as e:
         raise HTTPException(
@@ -39,6 +51,7 @@ async def google_login(request: Request):
 async def google_callback(
     request: Request,
     code: str = Query(..., description="Authorization code from Google"),
+    state: str = Query(..., description="OAuth state parameter for CSRF protection"),
     response: Response = None,
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis_client),
@@ -48,6 +61,23 @@ async def google_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Authorization code is required",
         )
+    
+    if not redis_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session service unavailable",
+        )
+    
+    redis_key = f"oauth_state:{state}"
+    state_exists = redis_client.get(redis_key)
+    
+    if not state_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+    
+    redis_client.delete(redis_key)
 
     try:
         oauth_client = get_google_oauth_client()
@@ -95,12 +125,6 @@ async def google_callback(
                 detail="Authentication failed. Please try again.",
             )
 
-        if not redis_client:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session service unavailable",
-            )
-
         session_token = create_session(user.id, redis_client)
 
         response.set_cookie(
@@ -144,13 +168,21 @@ async def update_profile(
 ):
     update_data = profile_update.model_dump(exclude_unset=True)
 
-    for field, value in update_data.items():
-        setattr(current_user, field, value)
+    try:
+        for field, value in update_data.items():
+            setattr(current_user, field, value)
 
-    current_user.updated_at = datetime.utcnow()
+        current_user.updated_at = datetime.utcnow()
 
-    db.commit()
-    db.refresh(current_user)
+        db.commit()
+        db.refresh(current_user)
+    except Exception as db_error:
+        db.rollback()
+        logger.error(f"Database error during profile update: {str(db_error)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Profile update failed. Please try again.",
+        )
 
     return UserResponse.model_validate(current_user)
 
