@@ -190,6 +190,7 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - ✅ **Core API endpoints** for business logic - 22 endpoints implemented (Issue #35 - PR #76 - Completed 2025/11/08)
 
 ### Performance & Quality Improvements (Active Development)
+
 - ✅ **Stock price auto-update** - Daily batch job completed (Issue #85 - PR #92)
 - ✅ **Database index optimization** - 7 indexes for query performance (Issue #88 - Completed 2025/11/08)
 - **Export API completion** - Complete remaining endpoints & security (Issue #83) 🔥 HIGH PRIORITY
@@ -232,6 +233,7 @@ gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_c
 - 🚀 User features in planning (Issues #34, #49-53)
 
 ### Next Session Priority (Updated 2025/11/08 - Post Issue #88)
+
 1. **Frontend development start** (Issue #22) - Next.js setup, UI components 🔥
 2. **Google OAuth Authentication** (Issue #34) - Unblocks user features (#50, #51, #52) 🔥
 3. **Export API completion** (Issue #83) - Finish remaining endpoints (Screening, Comparison, Financial) 🔥
