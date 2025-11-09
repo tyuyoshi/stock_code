@@ -281,29 +281,29 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
 ## Dependency Updates
 
-### PR #108: authlib 1.6.5 Security Update
-**Status**: ⏸️ **Blocked by CI/CD configuration** (Issue #109)
+### PR #116: authlib 1.6.5 Security Update
+**Status**: ✅ **Pending review** (Resolves Dependabot alerts #27-30, Issue #109)
 
 **Dependency**: authlib 1.3.0 → 1.6.5
 
 **Security Fixes**:
-- DoS vulnerability fixes (JWE/JWS size limits)
-- CVE fixes for JOSE libraries
-- Security improvements from 7 releases (1.3.0 → 1.6.5)
+- Alert #29 (HIGH): DoS via Oversized JOSE Segments → Fixed in 1.6.5
+- Alert #28 (HIGH): JWS/JWT accepts unknown crit headers (RFC violation) → Fixed in 1.6.4
+- Alert #27 (HIGH): Algorithm confusion with asymmetric public keys → Fixed in 1.3.1
+- Alert #30 (MEDIUM): JWE zip=DEF decompression bomb DoS → Fixed in 1.6.5
 
-**Blocker**: GitHub Actions環境でOAuth認証情報未設定
-- `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` がCI/CD環境で必要
-- PR #105 (Google OAuth実装) で追加された起動時検証により、環境変数未設定でテスト失敗
+**CI/CD Fix** (Issue #109 resolved):
+- Modified `backend/api/main.py` to skip OAuth validation in test environment
+- Prevents CI/CD failures when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not configured
+- Test environment already sets `environment="test"` in `conftest.py`
 
-**Next Action**: 
-1. Issue #109 を解決 (GitHub Secrets設定 or テスト環境で検証スキップ)
-2. CI/CD グリーン確認
-3. PR #108 マージ
+**Testing**:
+- ✅ authlib 1.6.5 installation verified
+- ✅ All auth-related tests passing (12/12 in test_auth.py)
+- ✅ Critical imports successful (OAuth2Client, jwt)
+- ✅ No breaking changes detected
 
-**関連**:
-- Issue #109: Fix CI/CD environment for OAuth credentials
-- Issue #34: Google OAuth 2.0 認証実装 (完了)
-- PR #105: Google OAuth実装 (マージ済み - 2025/11/09)
+**Supersedes**: PR #108 (Dependabot PR, closed)
 
 ## Known Issues and TODOs
 
@@ -312,7 +312,7 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 - ✅ **python-multipart DoS vulnerability** fixed (Issue #64 - Completed 2025/11/01)
 - ✅ **aiohttp multiple vulnerabilities** fixed (Issue #65 - Completed 2025/11/01)
 - ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
-- ⏸️ **authlib security update** blocked (Issue #109 - PR #108 waiting for CI/CD fix)
+- 🔄 **authlib security update** in review (PR #116 - Resolves alerts #27-30 & Issue #109)
 
 ### Core Features Completed
 - ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
