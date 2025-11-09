@@ -3,7 +3,6 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch
-from fastapi.testclient import TestClient
 from datetime import datetime
 from decimal import Decimal
 
@@ -13,13 +12,13 @@ from models.watchlist import Watchlist, WatchlistItem
 from core.sessions import create_session
 from api.routers.websocket import (
     ConnectionManager,
-    get_websocket_user,
     verify_watchlist_access,
     fetch_watchlist_prices,
 )
 
 
 # Fixtures
+
 
 @pytest.fixture
 def test_user(db_session):
@@ -139,49 +138,80 @@ def session_token(test_user, redis_client):
 
 # Unit Tests
 
+
 class TestConnectionManager:
     """Test the ConnectionManager class"""
 
     @pytest.mark.asyncio
-    async def test_connect_and_disconnect(self):
+    async def test_connect_and_disconnect(self, db_session, test_watchlist):
         """Test connecting and disconnecting WebSocket"""
         manager = ConnectionManager()
         mock_websocket = Mock()
         mock_websocket.accept = AsyncMock()
+        mock_yahoo_client = Mock()
 
-        watchlist_id = 1
+        watchlist_id = test_watchlist.id
 
         # Connect
-        await manager.connect(mock_websocket, watchlist_id)
+        await manager.connect(
+            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
+        )
         assert watchlist_id in manager.active_connections
         assert mock_websocket in manager.active_connections[watchlist_id]
+        assert watchlist_id in manager.background_tasks
         mock_websocket.accept.assert_called_once()
 
         # Disconnect
         await manager.disconnect(mock_websocket, watchlist_id)
         assert watchlist_id not in manager.active_connections
+        assert watchlist_id not in manager.background_tasks  # Task should be cancelled
 
     @pytest.mark.asyncio
-    async def test_multiple_connections(self):
-        """Test multiple connections to the same watchlist"""
+    async def test_multiple_connections_single_task(self, db_session, test_watchlist):
+        """Test multiple connections share a single background task"""
         manager = ConnectionManager()
         mock_ws1 = Mock()
         mock_ws1.accept = AsyncMock()
         mock_ws2 = Mock()
         mock_ws2.accept = AsyncMock()
+        mock_ws3 = Mock()
+        mock_ws3.accept = AsyncMock()
+        mock_yahoo_client = Mock()
 
-        watchlist_id = 1
+        watchlist_id = test_watchlist.id
 
-        await manager.connect(mock_ws1, watchlist_id)
-        await manager.connect(mock_ws2, watchlist_id)
-
-        assert len(manager.active_connections[watchlist_id]) == 2
-
-        await manager.disconnect(mock_ws1, watchlist_id)
+        # Connect first client - should create background task
+        await manager.connect(
+            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client
+        )
         assert len(manager.active_connections[watchlist_id]) == 1
+        assert watchlist_id in manager.background_tasks
+        first_task = manager.background_tasks[watchlist_id]
 
+        # Connect second and third clients - should reuse same background task
+        await manager.connect(
+            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client
+        )
+        await manager.connect(
+            mock_ws3, watchlist_id, test_watchlist, mock_yahoo_client
+        )
+        assert len(manager.active_connections[watchlist_id]) == 3
+        assert manager.background_tasks[watchlist_id] is first_task  # Same task!
+
+        # Disconnect first client - task should remain (2 clients left)
+        await manager.disconnect(mock_ws1, watchlist_id)
+        assert len(manager.active_connections[watchlist_id]) == 2
+        assert watchlist_id in manager.background_tasks
+
+        # Disconnect second client - task should remain (1 client left)
         await manager.disconnect(mock_ws2, watchlist_id)
+        assert len(manager.active_connections[watchlist_id]) == 1
+        assert watchlist_id in manager.background_tasks
+
+        # Disconnect last client - task should be cancelled
+        await manager.disconnect(mock_ws3, watchlist_id)
         assert watchlist_id not in manager.active_connections
+        assert watchlist_id not in manager.background_tasks
 
     @pytest.mark.asyncio
     async def test_send_personal_message(self):
@@ -196,7 +226,7 @@ class TestConnectionManager:
         mock_websocket.send_json.assert_called_once_with(message)
 
     @pytest.mark.asyncio
-    async def test_broadcast_to_watchlist(self):
+    async def test_broadcast_to_watchlist(self, db_session, test_watchlist):
         """Test broadcasting message to all watchlist connections"""
         manager = ConnectionManager()
         mock_ws1 = Mock()
@@ -205,11 +235,16 @@ class TestConnectionManager:
         mock_ws2 = Mock()
         mock_ws2.accept = AsyncMock()
         mock_ws2.send_json = AsyncMock()
+        mock_yahoo_client = Mock()
 
-        watchlist_id = 1
+        watchlist_id = test_watchlist.id
 
-        await manager.connect(mock_ws1, watchlist_id)
-        await manager.connect(mock_ws2, watchlist_id)
+        await manager.connect(
+            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client
+        )
+        await manager.connect(
+            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client
+        )
 
         message = {"type": "price_update", "data": "test"}
         await manager.broadcast_to_watchlist(message, watchlist_id)
@@ -218,7 +253,9 @@ class TestConnectionManager:
         mock_ws2.send_json.assert_called_once_with(message)
 
     @pytest.mark.asyncio
-    async def test_broadcast_handles_disconnected_clients(self):
+    async def test_broadcast_handles_disconnected_clients(
+        self, db_session, test_watchlist
+    ):
         """Test that broadcast removes disconnected clients"""
         manager = ConnectionManager()
         mock_ws_good = Mock()
@@ -227,11 +264,16 @@ class TestConnectionManager:
         mock_ws_bad = Mock()
         mock_ws_bad.accept = AsyncMock()
         mock_ws_bad.send_json = AsyncMock(side_effect=Exception("Connection lost"))
+        mock_yahoo_client = Mock()
 
-        watchlist_id = 1
+        watchlist_id = test_watchlist.id
 
-        await manager.connect(mock_ws_good, watchlist_id)
-        await manager.connect(mock_ws_bad, watchlist_id)
+        await manager.connect(
+            mock_ws_good, watchlist_id, test_watchlist, mock_yahoo_client
+        )
+        await manager.connect(
+            mock_ws_bad, watchlist_id, test_watchlist, mock_yahoo_client
+        )
 
         message = {"type": "test"}
         await manager.broadcast_to_watchlist(message, watchlist_id)
@@ -242,17 +284,122 @@ class TestConnectionManager:
         # Bad websocket should be removed
         assert mock_ws_bad not in manager.active_connections[watchlist_id]
 
+    @pytest.mark.asyncio
+    async def test_background_task_cleanup_on_cancellation(
+        self, db_session, test_watchlist
+    ):
+        """Test background task is properly cleaned up when cancelled"""
+        manager = ConnectionManager()
+        mock_websocket = Mock()
+        mock_websocket.accept = AsyncMock()
+        mock_yahoo_client = Mock()
+
+        watchlist_id = test_watchlist.id
+
+        # Connect and verify task is created
+        await manager.connect(
+            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
+        )
+        assert watchlist_id in manager.background_tasks
+        task = manager.background_tasks[watchlist_id]
+
+        # Disconnect should cancel the task
+        await manager.disconnect(mock_websocket, watchlist_id)
+
+        # Wait a bit for task cleanup
+        await asyncio.sleep(0.1)
+
+        assert watchlist_id not in manager.background_tasks
+        assert task.cancelled() or task.done()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_connections_race_condition(
+        self, db_session, test_watchlist
+    ):
+        """Test thread-safe handling of concurrent connections"""
+        manager = ConnectionManager()
+        mock_yahoo_client = Mock()
+
+        # Create 10 mock websockets
+        websockets = []
+        for i in range(10):
+            ws = Mock()
+            ws.accept = AsyncMock()
+            websockets.append(ws)
+
+        watchlist_id = test_watchlist.id
+
+        # Mock get_db to return db_session for background worker
+        with patch("api.routers.websocket.get_db") as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
+
+            # Connect all 10 websockets concurrently
+            connect_tasks = [
+                manager.connect(ws, watchlist_id, test_watchlist, mock_yahoo_client)
+                for ws in websockets
+            ]
+            await asyncio.gather(*connect_tasks)
+
+            # Should have exactly 10 connections
+            assert len(manager.active_connections[watchlist_id]) == 10
+
+            # Should have exactly 1 background task (not 10!)
+            assert len(manager.background_tasks) == 1
+            assert watchlist_id in manager.background_tasks
+
+            # Disconnect all concurrently
+            disconnect_tasks = [
+                manager.disconnect(ws, watchlist_id) for ws in websockets
+            ]
+            await asyncio.gather(*disconnect_tasks)
+
+            # All should be cleaned up
+            assert watchlist_id not in manager.active_connections
+            assert watchlist_id not in manager.background_tasks
+
+    @pytest.mark.asyncio
+    async def test_price_update_worker_stops_when_no_connections(
+        self, db_session, test_watchlist
+    ):
+        """Test background worker stops when no active connections remain"""
+        manager = ConnectionManager()
+        mock_websocket = Mock()
+        mock_websocket.accept = AsyncMock()
+        mock_yahoo_client = Mock()
+        mock_yahoo_client.bulk_fetch_prices = AsyncMock(return_value={})
+
+        watchlist_id = test_watchlist.id
+
+        # Mock get_db to return db_session for background worker
+        with patch("api.routers.websocket.get_db") as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
+
+            # Connect
+            await manager.connect(
+                mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
+            )
+            task = manager.background_tasks[watchlist_id]
+
+            # Disconnect immediately
+            await manager.disconnect(mock_websocket, watchlist_id)
+
+            # Wait for background task to notice and exit
+            await asyncio.sleep(0.2)
+
+            # Task should be done (cancelled or exited naturally)
+            assert task.done() or task.cancelled()
+
 
 class TestWebSocketAuthentication:
     """Test WebSocket authentication"""
 
     @pytest.mark.asyncio
-    async def test_verify_watchlist_access_owner(self, db_session, test_user, test_watchlist):
+    async def test_verify_watchlist_access_owner(
+        self, db_session, test_user, test_watchlist
+    ):
         """Test watchlist access verification for owner"""
         watchlist = await verify_watchlist_access(
-            test_watchlist.id,
-            test_user,
-            db_session
+            test_watchlist.id, test_user, db_session
         )
         assert watchlist is not None
         assert watchlist.id == test_watchlist.id
@@ -272,9 +419,7 @@ class TestWebSocketAuthentication:
         db_session.commit()
 
         watchlist = await verify_watchlist_access(
-            public_watchlist.id,
-            other_user,
-            db_session
+            public_watchlist.id, other_user, db_session
         )
         assert watchlist is not None
         assert watchlist.is_public is True
@@ -293,20 +438,14 @@ class TestWebSocketAuthentication:
         db_session.commit()
 
         watchlist = await verify_watchlist_access(
-            test_watchlist.id,
-            other_user,
-            db_session
+            test_watchlist.id, other_user, db_session
         )
         assert watchlist is None
 
     @pytest.mark.asyncio
     async def test_verify_watchlist_not_found(self, db_session, test_user):
         """Test watchlist access with non-existent watchlist"""
-        watchlist = await verify_watchlist_access(
-            99999,
-            test_user,
-            db_session
-        )
+        watchlist = await verify_watchlist_access(99999, test_user, db_session)
         assert watchlist is None
 
 
@@ -330,9 +469,7 @@ class TestFetchWatchlistPrices:
         mock_yahoo_client = Mock()
 
         result = await fetch_watchlist_prices(
-            empty_watchlist,
-            mock_yahoo_client,
-            db_session
+            empty_watchlist, mock_yahoo_client, db_session
         )
 
         assert result["type"] == "price_update"
@@ -341,28 +478,30 @@ class TestFetchWatchlistPrices:
         assert result["timestamp"] is None
 
     @pytest.mark.asyncio
-    async def test_fetch_prices_with_data(self, db_session, test_watchlist, test_company, test_company_2):
+    async def test_fetch_prices_with_data(
+        self, db_session, test_watchlist, test_company, test_company_2
+    ):
         """Test fetching prices with actual data"""
         mock_yahoo_client = Mock()
-        mock_yahoo_client.bulk_fetch_prices = AsyncMock(return_value={
-            "7203": {
-                "ticker": "7203",
-                "close_price": 2500.0,
-                "previous_close": 2450.0,
-                "currency": "JPY",
-            },
-            "9984": {
-                "ticker": "9984",
-                "close_price": 5200.0,
-                "previous_close": 5000.0,
-                "currency": "JPY",
+        mock_yahoo_client.bulk_fetch_prices = AsyncMock(
+            return_value={
+                "7203": {
+                    "ticker": "7203",
+                    "close_price": 2500.0,
+                    "previous_close": 2450.0,
+                    "currency": "JPY",
+                },
+                "9984": {
+                    "ticker": "9984",
+                    "close_price": 5200.0,
+                    "previous_close": 5000.0,
+                    "currency": "JPY",
+                },
             }
-        })
+        )
 
         result = await fetch_watchlist_prices(
-            test_watchlist,
-            mock_yahoo_client,
-            db_session
+            test_watchlist, mock_yahoo_client, db_session
         )
 
         assert result["type"] == "price_update"
@@ -380,7 +519,9 @@ class TestFetchWatchlistPrices:
         assert toyota_stock["unrealized_pl"] == 10000.0  # (2500 - 2400) * 100
 
         # Check SoftBank data
-        softbank_stock = next(s for s in result["stocks"] if s["ticker_symbol"] == "9984")
+        softbank_stock = next(
+            s for s in result["stocks"] if s["ticker_symbol"] == "9984"
+        )
         assert softbank_stock["current_price"] == 5200.0
         assert softbank_stock["change"] == 200.0
         assert softbank_stock["change_percent"] == 4.0
@@ -391,19 +532,19 @@ class TestFetchWatchlistPrices:
     async def test_fetch_prices_partial_data(self, db_session, test_watchlist):
         """Test fetching prices when some stocks have no data"""
         mock_yahoo_client = Mock()
-        mock_yahoo_client.bulk_fetch_prices = AsyncMock(return_value={
-            "7203": {
-                "ticker": "7203",
-                "close_price": 2500.0,
-                "previous_close": 2450.0,
-            },
-            "9984": None,  # No data for this stock
-        })
+        mock_yahoo_client.bulk_fetch_prices = AsyncMock(
+            return_value={
+                "7203": {
+                    "ticker": "7203",
+                    "close_price": 2500.0,
+                    "previous_close": 2450.0,
+                },
+                "9984": None,  # No data for this stock
+            }
+        )
 
         result = await fetch_watchlist_prices(
-            test_watchlist,
-            mock_yahoo_client,
-            db_session
+            test_watchlist, mock_yahoo_client, db_session
         )
 
         assert len(result["stocks"]) == 2
@@ -413,15 +554,20 @@ class TestFetchWatchlistPrices:
         assert toyota_stock["current_price"] == 2500.0
 
         # SoftBank should have None for price fields
-        softbank_stock = next(s for s in result["stocks"] if s["ticker_symbol"] == "9984")
+        softbank_stock = next(
+            s for s in result["stocks"] if s["ticker_symbol"] == "9984"
+        )
         assert softbank_stock["current_price"] is None
         assert softbank_stock["change"] is None
 
 
 # Integration Tests
 
+
 @pytest.mark.asyncio
-async def test_websocket_connection_with_auth(client, test_user, test_watchlist, redis_client, db_session):
+async def test_websocket_connection_with_auth(
+    client, test_user, test_watchlist, redis_client, db_session
+):
     """Test WebSocket connection with authentication"""
     session_token = create_session(test_user.id, redis_client)
 
@@ -430,7 +576,7 @@ async def test_websocket_connection_with_auth(client, test_user, test_watchlist,
             "type": "price_update",
             "watchlist_id": test_watchlist.id,
             "stocks": [],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         with client.websocket_connect(
@@ -448,7 +594,7 @@ async def test_websocket_connection_without_auth(client, test_watchlist):
     with pytest.raises(Exception):  # FastAPI WebSocketDisconnect
         with client.websocket_connect(
             f"/api/v1/ws/watchlist/{test_watchlist.id}/prices"
-        ) as websocket:
+        ):
             pass
 
 
@@ -458,12 +604,14 @@ async def test_websocket_connection_invalid_token(client, test_watchlist):
     with pytest.raises(Exception):
         with client.websocket_connect(
             f"/api/v1/ws/watchlist/{test_watchlist.id}/prices?token=invalid_token"
-        ) as websocket:
+        ):
             pass
 
 
 @pytest.mark.asyncio
-async def test_websocket_access_denied(client, test_user, test_watchlist, redis_client, db_session):
+async def test_websocket_access_denied(
+    client, test_user, test_watchlist, redis_client, db_session
+):
     """Test WebSocket connection denied for non-owner"""
     # Create another user
     other_user = User(
@@ -481,5 +629,5 @@ async def test_websocket_access_denied(client, test_user, test_watchlist, redis_
     with pytest.raises(Exception):
         with client.websocket_connect(
             f"/api/v1/ws/watchlist/{test_watchlist.id}/prices?token={session_token}"
-        ) as websocket:
+        ):
             pass
