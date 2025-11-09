@@ -292,6 +292,70 @@ flake8
 mypy .
 ```
 
+### Yahoo Finance APIレート制限
+
+Stock Codeは**Token Bucketレート制限アルゴリズム**を実装し、Yahoo Finance APIからのエラーやIPブロックを防止しています。
+
+#### 設定方法
+
+```bash
+# backend/.env
+YAHOO_FINANCE_MAX_TOKENS=100
+YAHOO_FINANCE_REFILL_RATE=0.5  # tokens/second (30/min, 1800/hour)
+YAHOO_FINANCE_RATE_LIMIT_KEY=rate_limit:yahoo_api
+```
+
+#### 仕組み
+
+- **Token Bucket方式**: 100トークン容量、0.5トークン/秒で補充
+- **保守的な制限**: 毎分30リクエスト（Yahoo Financeの制限~2000/時間を大きく下回る）
+- **分散システム対応**: Redisバックエンドで複数インスタンス間で調整
+- **グレースフルな待機**: トークン不足時は失敗せずに待機
+
+#### レート制限の動作確認
+
+Python環境でレート制限の状態を確認できます：
+
+```python
+from services.yahoo_finance_client import YahooFinanceClient
+from core.dependencies import get_redis_client
+
+redis = next(get_redis_client())
+client = YahooFinanceClient(redis_client=redis)
+
+# レート制限の統計情報を取得
+stats = await client.rate_limiter.get_stats()
+print(stats)
+# {'current_tokens': 87.5, 'max_tokens': 100, 'refill_rate': 0.5,
+#  'utilization_percent': 12.5, 'last_refill': 1699876543.21}
+```
+
+#### トラブルシューティング
+
+**問題**: レート制限が厳しすぎる（待機時間が長い）
+- `YAHOO_FINANCE_REFILL_RATE` を増やす（例: 1.0 = 60リクエスト/分）
+- `YAHOO_FINANCE_MAX_TOKENS` を増やして大きなバーストに対応
+
+**問題**: それでも429エラーが発生する
+- `YAHOO_FINANCE_REFILL_RATE` を減らす（例: 0.3 = 18リクエスト/分）
+- 同じIPを使用している他のサービスがないか確認
+
+**問題**: Redis接続エラー
+- レート制限機能は無効化され、レガシーの固定遅延（0.5秒）にフォールバック
+- Redis接続を確認: `redis-cli ping`
+
+#### 実装の詳細
+
+- **統合箇所**: `YahooFinanceClient`の5つのAPIメソッド
+  - `get_stock_price()` - 株価取得
+  - `get_historical_data()` - 過去データ取得
+  - `get_company_info()` - 企業情報取得
+  - `get_dividends()` - 配当情報取得
+  - `get_stock_splits()` - 株式分割情報取得
+- **WebSocket対応**: リアルタイム価格更新も自動的にレート制限が適用
+- **バッチジョブ対応**: 日次株価更新ジョブも自動的にレート制限が適用
+- **並行処理制御**: Semaphore(5)で最大5並行リクエスト + Token Bucket制御
+
 ### API ドキュメント
 
 サーバー起動後、以下のURLでインタラクティブなAPIドキュメントにアクセスできます:

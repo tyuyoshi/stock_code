@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     # Frontend URL
     frontend_url: str = "http://localhost:3000"
 
+    # Yahoo Finance Rate Limiting
+    yahoo_finance_max_tokens: int = 100
+    yahoo_finance_refill_rate: float = 0.5  # tokens/second (30/min, 1800/hour)
+    yahoo_finance_rate_limit_key: str = "rate_limit:yahoo_api"
+
     @field_validator('cors_origins', mode='before')
     @classmethod
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

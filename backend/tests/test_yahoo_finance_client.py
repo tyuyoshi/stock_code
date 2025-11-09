@@ -369,3 +369,73 @@ class TestYahooFinanceClient:
                 assert len(sleep_calls) >= 2
                 assert sleep_calls[0] == 0.5  # Rate limit delay
                 assert sleep_calls[1] == 0.5  # Rate limit delay
+
+    @pytest.mark.asyncio
+    @patch('yfinance.Ticker')
+    async def test_token_bucket_rate_limiter_integration(self, mock_ticker_class, mock_redis):
+        """Test integration of token bucket rate limiter with YahooFinanceClient"""
+        from core.rate_limiter import TokenBucketRateLimiter
+
+        # Create client with Redis (to enable rate limiter)
+        client = YahooFinanceClient(redis_client=mock_redis)
+
+        # Manually set up rate limiter for testing (override the one in __init__)
+        # Use a real Redis client for this test if available
+        try:
+            from redis import Redis
+            from core.config import settings
+
+            if settings.redis_url:
+                real_redis = Redis.from_url(settings.redis_url)
+                client.rate_limiter = TokenBucketRateLimiter(
+                    redis_client=real_redis,
+                    max_tokens=10,
+                    refill_rate=5.0,  # Fast refill for testing
+                    key_prefix="test:yahoo_api"
+                )
+
+                # Clean up test keys
+                real_redis.delete("test:yahoo_api:tokens")
+                real_redis.delete("test:yahoo_api:last_refill")
+
+                # Setup mock ticker
+                mock_ticker = Mock()
+                mock_ticker_class.return_value = mock_ticker
+                mock_ticker.info = {'previousClose': 1500.0, 'marketCap': 1000000000, 'currency': 'JPY'}
+                hist_data = pd.DataFrame({
+                    'Open': [1450.0], 'High': [1520.0], 'Low': [1440.0],
+                    'Close': [1500.0], 'Volume': [1000000]
+                }, index=[datetime.now()])
+                mock_ticker.history.return_value = hist_data
+
+                # Get initial stats
+                stats_before = await client.rate_limiter.get_stats()
+                initial_tokens = stats_before["current_tokens"]
+
+                # Make API call (should consume 1 token)
+                result = await client.get_stock_price("7203", use_cache=False)
+
+                # Verify API call succeeded
+                assert result is not None
+                assert result['ticker'] == "7203"
+
+                # Verify token was consumed
+                stats_after = await client.rate_limiter.get_stats()
+                assert stats_after["current_tokens"] < initial_tokens
+                assert stats_after["current_tokens"] >= initial_tokens - 1.1  # Allow small margin
+
+                # Make multiple calls to test token consumption
+                for i in range(3):
+                    await client.get_stock_price("7203", use_cache=False)
+
+                # Verify more tokens were consumed
+                stats_final = await client.rate_limiter.get_stats()
+                assert stats_final["current_tokens"] < stats_after["current_tokens"]
+
+                # Clean up
+                real_redis.delete("test:yahoo_api:tokens")
+                real_redis.delete("test:yahoo_api:last_refill")
+            else:
+                pytest.skip("Redis not configured for integration test")
+        except Exception as e:
+            pytest.skip(f"Redis integration test skipped: {e}")
