@@ -1,23 +1,73 @@
 /**
  * Watchlist Page
  *
- * Displays a watchlist with real-time stock price updates.
- * This is a demo page to showcase the WebSocket integration.
+ * Displays a watchlist with real-time stock price updates via WebSocket.
+ * Automatically creates a default watchlist for new users.
  */
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { WatchlistTable } from "@/components/watchlist";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useWatchlists } from "@/lib/hooks/useWatchlists";
 import { Loader2 } from "lucide-react";
 
 export default function WatchlistPage() {
-  const { user, isLoading } = useAuth();
-  const [watchlistId, setWatchlistId] = useState<number>(1); // Default watchlist ID
+  const { user, isLoading: authLoading } = useAuth();
+  const {
+    watchlists,
+    isLoading: watchlistsLoading,
+    error: watchlistsError,
+    createDefaultWatchlist,
+  } = useWatchlists(!user); // Only auto-fetch if user is logged in
+  const [watchlistId, setWatchlistId] = useState<number | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  /**
+   * Initialize watchlist for the user
+   * - If user has watchlists, use the first one
+   * - If user has no watchlists, create a default one
+   */
+  useEffect(() => {
+    if (!user || watchlistsLoading || isInitializing) {
+      return;
+    }
+
+    // If we already have a watchlist ID, do nothing
+    if (watchlistId !== null) {
+      return;
+    }
+
+    // If user has watchlists, use the first one
+    if (watchlists.length > 0) {
+      setWatchlistId(watchlists[0].id);
+      return;
+    }
+
+    // If user has no watchlists, create a default one
+    setIsInitializing(true);
+    createDefaultWatchlist()
+      .then((newWatchlist) => {
+        setWatchlistId(newWatchlist.id);
+      })
+      .catch((error) => {
+        console.error("[WatchlistPage] Failed to create default watchlist:", error);
+      })
+      .finally(() => {
+        setIsInitializing(false);
+      });
+  }, [
+    user,
+    watchlists,
+    watchlistsLoading,
+    watchlistId,
+    isInitializing,
+    createDefaultWatchlist,
+  ]);
 
   // Show loading state while checking authentication
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -49,6 +99,45 @@ export default function WatchlistPage() {
     );
   }
 
+  // Show loading state while initializing watchlist
+  if (watchlistsLoading || isInitializing || watchlistId === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
+          <p className="mt-4 text-gray-600">
+            {isInitializing
+              ? "ウォッチリストを作成中..."
+              : "ウォッチリストを読み込み中..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if watchlist fetch failed
+  if (watchlistsError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">エラー</h1>
+          <p className="mt-2 text-gray-600">
+            ウォッチリストの読み込みに失敗しました
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            {watchlistsError.message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -62,23 +151,30 @@ export default function WatchlistPage() {
           </p>
         </div>
 
-        {/* Watchlist ID selector (for demo purposes) */}
-        <div className="mb-6">
-          <label
-            htmlFor="watchlist-id"
-            className="block text-sm font-medium text-gray-700"
-          >
-            ウォッチリストID
-          </label>
-          <input
-            type="number"
-            id="watchlist-id"
-            value={watchlistId}
-            onChange={(e) => setWatchlistId(parseInt(e.target.value, 10))}
-            className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            min="1"
-          />
-        </div>
+        {/* Watchlist selector (if user has multiple watchlists) */}
+        {watchlists.length > 1 && (
+          <div className="mb-6">
+            <label
+              htmlFor="watchlist-selector"
+              className="block text-sm font-medium text-gray-700"
+            >
+              ウォッチリスト
+            </label>
+            <select
+              id="watchlist-selector"
+              value={watchlistId || ""}
+              onChange={(e) => setWatchlistId(parseInt(e.target.value, 10))}
+              className="mt-1 block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {watchlists.map((wl) => (
+                <option key={wl.id} value={wl.id}>
+                  {wl.name}
+                  {wl.description && ` - ${wl.description}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Watchlist table with real-time updates */}
         <WatchlistTable watchlistId={watchlistId} autoConnect={true} />
