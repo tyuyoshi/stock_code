@@ -141,6 +141,16 @@ npm run build           # Production build
      - 16 comprehensive tests (97% coverage)
      - Complete user authorization and data isolation
      - N+1 query prevention with eager loading
+   - ✅ **WebSocket Real-time Price Updates** - Live stock price streaming (Issue #117, PR #122 - 2025/11/09)
+     - WebSocket endpoint for real-time price updates (5-second interval)
+     - ConnectionManager for multiple client handling
+     - Session-based authentication and access control
+     - Yahoo Finance integration with P&L calculation
+     - 16 comprehensive tests (ConnectionManager, auth, price fetching)
+     - Developer tools: CLI test tool, setup/cleanup scripts
+     - Complete documentation (455-line testing guide)
+   - 🔄 **Frontend WebSocket Client** - React/Next.js real-time UI (Issue #123) - Ready to start
+   - 🔄 **WebSocket Monitoring** - Metrics and performance optimization (Issue #124) - Ready to start
    - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked by Issue #34
    - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52) - Unblocked by Issue #34
    - 🔄 **Analyst Coverage** - Rating & coverage info (Issue #49)
@@ -237,21 +247,23 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - Watchlist feature completed)
+### Issue Status (as of 2025/11/09 - WebSocket real-time updates completed)
 
-- **Total Issues**: 120 total
-- **Closed**: 33 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #50, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88, #109)
+- **Total Issues**: 124 total
+- **Closed**: 34 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #50, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88, #109, #117)
   - **Issue #22 completed**: Next.js 14 App Router setup (PR #110 - Merged 2025/11/09) - Frontend foundation established
   - **Issue #34 merged**: Google OAuth 2.0 implementation (PR #105 - Merged 2025/11/09)
   - **Issue #50 completed**: Watchlist management (PR #121 - Merged 2025/11/09) - Complete portfolio tracking
   - **Issue #109 completed**: CI/CD OAuth credentials fix (PR #116 - Merged 2025/11/09)
+  - **Issue #117 completed**: WebSocket real-time price updates (PR #122 - 2025/11/09) - Live streaming backend
   - **Issue cleanup**: 8 duplicate/completed issues closed - 2025/11/09
-- **Open**: 87
-- **High Priority**: #23-25 (Frontend UI pages), #90 (Test coverage), #100 (Audit logging), #117-118 (Watchlist Phase 2)
+- **Open**: 90
+- **High Priority**: #23-25 (Frontend UI pages), #90 (Test coverage), #100 (Audit logging), #123 (Frontend WebSocket)
 - **New Issues** (2025/11/09):
   - **Frontend follow-ups** (PR #110 review): #111-115 (test coverage, error boundaries, CSP, Storybook)
   - **Export follow-ups** (Issue #83): #99-101 (performance testing, audit logging, history tracking)
-  - **Watchlist Phase 2** (Issue #50 follow-ups): #117-120 (WebSocket updates, analysis API, sharing, groups)
+  - **Watchlist Phase 2** (Issue #50 follow-ups): #118-120 (analysis API, sharing, groups)
+  - **WebSocket follow-ups** (Issue #117): #123 (Frontend client), #124 (Monitoring)
 
 ## External APIs Used
 
@@ -393,21 +405,25 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/09 - After watchlist completion)
+### Next Session Priority (Updated 2025/11/09 - After WebSocket backend completion)
 
-**Phase 1: Watchlist Enhancement** (1-2 weeks) 🔥
-1. **Issue #117**: WebSocket real-time updates - 5-second interval price streaming (HIGH)
+**Phase 1: Frontend Real-time Features** (1-2 weeks) 🔥
+1. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
+   - WebSocket client with auto-reconnect
+   - useRealtimePrices React Hook
+   - WatchlistTable real-time updates
 2. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
 
-**Phase 2: Frontend Pages** (2-3 weeks) 🔥  
+**Phase 2: Frontend Pages** (2-3 weeks) 🔥
 3. **Issue #23**: Company Details Page - Financial data visualization (Ready to start)
 4. **Issue #24**: Screening Interface - Advanced filtering UI (Ready to start)
 5. **Issue #25**: Chart Visualization - Interactive stock price charts (Ready to start)
 
-**Phase 3: Quality & Compliance** (1-2 weeks) ⚡
-6. **Issue #100**: Audit logging - Export operations tracking, compliance
-7. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
-8. **Issue #119**: Watchlist sharing - Public/private sharing with tokens (MEDIUM)
+**Phase 3: Quality & Infrastructure** (1-2 weeks) ⚡
+6. **Issue #124**: WebSocket Monitoring - Connection metrics and performance (MEDIUM)
+7. **Issue #100**: Audit logging - Export operations tracking, compliance (HIGH)
+8. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
+9. **Issue #119**: Watchlist sharing - Public/private sharing with tokens (MEDIUM)
 
 ### GitHub Issue Cleanup History
 
