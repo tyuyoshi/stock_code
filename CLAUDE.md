@@ -247,23 +247,24 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - WebSocket real-time updates completed)
+### Issue Status (as of 2025/11/09 - WebSocket PR #122 merged with follow-up issues)
 
-- **Total Issues**: 124 total
+- **Total Issues**: 131 total
 - **Closed**: 34 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #50, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88, #109, #117)
   - **Issue #22 completed**: Next.js 14 App Router setup (PR #110 - Merged 2025/11/09) - Frontend foundation established
   - **Issue #34 merged**: Google OAuth 2.0 implementation (PR #105 - Merged 2025/11/09)
   - **Issue #50 completed**: Watchlist management (PR #121 - Merged 2025/11/09) - Complete portfolio tracking
   - **Issue #109 completed**: CI/CD OAuth credentials fix (PR #116 - Merged 2025/11/09)
-  - **Issue #117 completed**: WebSocket real-time price updates (PR #122 - 2025/11/09) - Live streaming backend
+  - **Issue #117 completed**: WebSocket real-time price updates (PR #122 - Merged 2025/11/09) - Live streaming backend
   - **Issue cleanup**: 8 duplicate/completed issues closed - 2025/11/09
-- **Open**: 90
-- **High Priority**: #23-25 (Frontend UI pages), #90 (Test coverage), #100 (Audit logging), #123 (Frontend WebSocket)
+- **Open**: 97
+- **High Priority**: #23-25 (Frontend UI pages), #90 (Test coverage), #100 (Audit logging), #123 (Frontend WebSocket), #125 (WebSocket performance fix), #127 (Rate limiting)
 - **New Issues** (2025/11/09):
   - **Frontend follow-ups** (PR #110 review): #111-115 (test coverage, error boundaries, CSP, Storybook)
   - **Export follow-ups** (Issue #83): #99-101 (performance testing, audit logging, history tracking)
   - **Watchlist Phase 2** (Issue #50 follow-ups): #118-120 (analysis API, sharing, groups)
   - **WebSocket follow-ups** (Issue #117): #123 (Frontend client), #124 (Monitoring)
+  - **WebSocket performance** (PR #122 review): #125 (Centralized broadcasting), #127 (Rate limiting), #128 (Market hours), #129 (DB optimization), #130 (Compression), #131 (Connection pooling)
 
 ## External APIs Used
 
@@ -405,25 +406,38 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/09 - After WebSocket backend completion)
+### Next Session Priority (Updated 2025/11/09 - After PR #122 merge with review feedback)
 
-**Phase 1: Frontend Real-time Features** (1-2 weeks) 🔥
-1. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
+**Phase 1: WebSocket Performance Fixes** (Week 1) 🔥
+1. **Issue #125**: Centralized price broadcasting - Fix memory leak (HIGH)
+   - Single background task per watchlist (not per connection)
+   - 90% reduction in API calls and memory usage
+   - Critical fix from PR #122 review
+2. **Issue #127**: Yahoo Finance API rate limiting (HIGH)
+   - Token bucket algorithm with Redis
+   - Prevent 429 errors and IP blocking
+
+**Phase 2: Frontend Real-time Features** (Week 2) 🔥
+3. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
    - WebSocket client with auto-reconnect
    - useRealtimePrices React Hook
    - WatchlistTable real-time updates
-2. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
+4. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
 
-**Phase 2: Frontend Pages** (2-3 weeks) 🔥
-3. **Issue #23**: Company Details Page - Financial data visualization (Ready to start)
-4. **Issue #24**: Screening Interface - Advanced filtering UI (Ready to start)
-5. **Issue #25**: Chart Visualization - Interactive stock price charts (Ready to start)
+**Phase 3: WebSocket Optimizations** (Week 3) ⚡
+5. **Issue #128**: Market hours optimization - Adaptive polling (MEDIUM)
+6. **Issue #129**: Database query optimization - Caching (MEDIUM)
+7. **Issue #130**: Message compression - Bandwidth reduction (MEDIUM)
 
-**Phase 3: Quality & Infrastructure** (1-2 weeks) ⚡
-6. **Issue #124**: WebSocket Monitoring - Connection metrics and performance (MEDIUM)
-7. **Issue #100**: Audit logging - Export operations tracking, compliance (HIGH)
-8. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
-9. **Issue #119**: Watchlist sharing - Public/private sharing with tokens (MEDIUM)
+**Phase 4: Frontend Pages** (Weeks 4-6) 🔥
+8. **Issue #23**: Company Details Page - Financial data visualization (Ready to start)
+9. **Issue #24**: Screening Interface - Advanced filtering UI (Ready to start)
+10. **Issue #25**: Chart Visualization - Interactive stock price charts (Ready to start)
+
+**Phase 5: Quality & Compliance** (Future) ⚡
+11. **Issue #100**: Audit logging - Export operations tracking, compliance (HIGH)
+12. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
+13. **Issue #131**: Connection pooling - Resource limits (LOW, defer until scale needed)
 
 ### GitHub Issue Cleanup History
 
