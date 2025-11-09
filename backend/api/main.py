@@ -34,12 +34,13 @@ app.add_middleware(
 # Validate secret key on startup
 settings.validate_secret_key()
 
-# Validate OAuth credentials on startup
-if not settings.google_client_id or not settings.google_client_secret:
-    raise ValueError(
-        "Google OAuth credentials not configured. "
-        "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment."
-    )
+# Validate OAuth credentials on startup (skip in test environment)
+if settings.environment not in ["test", "testing"]:
+    if not settings.google_client_id or not settings.google_client_secret:
+        raise ValueError(
+            "Google OAuth credentials not configured. "
+            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment."
+        )
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
