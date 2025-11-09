@@ -201,6 +201,13 @@ npm run build           # Production build
      - 16 comprehensive tests (ConnectionManager, auth, price fetching)
      - Developer tools: CLI test tool, setup/cleanup scripts
      - Complete documentation (455-line testing guide)
+   - ✅ **WebSocket Performance Optimization** - Centralized broadcasting (Issue #125, PR #132 - Merged 2025/11/09)
+     - Single background task per watchlist (not per connection)
+     - 90% reduction in API calls and memory usage
+     - Fresh DB session per iteration (prevents connection pool exhaustion)
+     - Proper asyncio.Task lifecycle management
+     - Memory leak eliminated through centralized price updates
+     - 19 tests passing with updated architecture
    - 🔄 **Frontend WebSocket Client** - React/Next.js real-time UI (Issue #123) - Ready to start
    - 🔄 **WebSocket Monitoring** - Metrics and performance optimization (Issue #124) - Ready to start
    - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked by Issue #34
@@ -299,10 +306,10 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - Major Cleanup Complete)
+### Issue Status (as of 2025/11/09 - Issue #125 Completed)
 
-- **Total Issues**: 131 total
-- **Closed**: 44 issues (comprehensive cleanup completed)
+- **Total Issues**: 132 total
+- **Closed**: 45 issues (comprehensive cleanup completed)
   - **Recently Closed** (2025/11/09 cleanup):
     - #5 (Cloud Scheduler - completed in #85)
     - #9 (Daily batch job - completed in #85)
@@ -319,11 +326,12 @@ gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open
     - #34: Google OAuth 2.0 (PR #105 - Authentication system)
     - #50: Watchlist management (PR #121 - Portfolio tracking)
     - #117: WebSocket real-time (PR #122 - Live price streaming)
+    - #125: WebSocket memory leak (PR #132 - Centralized broadcasting)
   - **Previous completions**: #2, #6, #8, #13, #16-22, #27, #30, #32-37, #50, #59, #63-66, #74, #80-83, #85, #88, #109
-- **Open**: 87 issues (10% reduction from 97)
-- **High Priority** (16 issues - accurately prioritized):
+- **Open**: 86 issues (1 more closed from 87)
+- **High Priority** (15 issues - accurately prioritized):
   - **Core Features**: #23 (Company details), #24 (Screening UI), #123 (Frontend WebSocket), #118 (Portfolio analysis)
-  - **Performance Fixes**: #125 (WebSocket memory leak - CRITICAL), #126 (Rate limiting)
+  - **Performance Fixes**: #126 (Rate limiting)
   - **Quality & Compliance**: #90 (Test coverage 78%→90%), #100 (Audit logging)
   - **Other**: #1, #3, #9, #12, #51, #76, #77, #107
 - **Consolidated Issues**:
@@ -476,14 +484,10 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/09 - After Major Issue Cleanup)
+### Next Session Priority (Updated 2025/11/09 - After Issue #125 Completion)
 
-**Phase 1: WebSocket Performance Fixes** (Week 1) 🔥 CRITICAL
-1. **Issue #125**: Centralized price broadcasting - Fix memory leak (HIGH)
-   - Single background task per watchlist (not per connection)
-   - 90% reduction in API calls and memory usage
-   - Critical fix from PR #122 review
-2. **Issue #126**: Yahoo Finance API rate limiting (HIGH)
+**Phase 1: API Rate Limiting** (Week 1) 🔥 CRITICAL
+1. **Issue #126**: Yahoo Finance API rate limiting (HIGH)
    - Token bucket algorithm with Redis
    - Prevent 429 errors and IP blocking
    - Note: #127 closed as duplicate
