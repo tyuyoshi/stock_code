@@ -197,7 +197,7 @@ async def get_websocket_user(
     db: Session,
     redis_client: Redis,
 ) -> Optional[User]:
-    """Authenticate WebSocket connection using session token
+    """Authenticate WebSocket connection using session cookie
 
     Args:
         websocket: WebSocket connection
@@ -207,12 +207,20 @@ async def get_websocket_user(
     Returns:
         Authenticated user or None if authentication fails
     """
-    # Extract session token from query parameters
-    session_token = websocket.query_params.get("token")
+    # Extract session token from cookies (HttpOnly cookie)
+    cookie_header = websocket.headers.get("cookie", "")
+    session_token = None
+
+    # Parse cookies to find session token
+    for cookie in cookie_header.split(";"):
+        cookie = cookie.strip()
+        if cookie.startswith("stockcode_session="):
+            session_token = cookie.split("=", 1)[1]
+            break
 
     if not session_token:
         await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Missing authentication token"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Missing authentication cookie"
         )
         return None
 
@@ -386,8 +394,9 @@ async def watchlist_price_stream(
     Uses centralized background tasks to prevent memory leaks.
     Each watchlist has only one price update task, shared by all connections.
 
-    Query Parameters:
-        token: Session token for authentication
+    Authentication:
+        Uses HttpOnly session cookie (stockcode_session) sent automatically
+        by the browser in the WebSocket upgrade request headers.
 
     Message Format:
         {

@@ -132,38 +132,18 @@ export class WebSocketClient {
   }
 
   /**
-   * Build WebSocket URL with authentication token
+   * Build WebSocket URL
+   *
+   * Authentication is handled via HttpOnly cookies sent automatically
+   * by the browser in the WebSocket upgrade request headers.
    */
   private buildWebSocketUrl(): string {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const wsProtocol = baseUrl.startsWith("https") ? "wss" : "ws";
     const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol);
 
-    // Extract session token from cookies
-    const sessionToken = this.getSessionToken();
-    if (!sessionToken) {
-      throw new Error("Session token not found. Please log in.");
-    }
-
-    return `${wsBaseUrl}/api/v1/ws/watchlist/${this.options.watchlistId}/prices?token=${sessionToken}`;
-  }
-
-  /**
-   * Extract session token from cookies
-   */
-  private getSessionToken(): string | null {
-    if (typeof document === "undefined") {
-      return null; // SSR environment
-    }
-
-    const cookies = document.cookie.split(";");
-    for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split("=");
-      if (name === "stockcode_session") {
-        return value;
-      }
-    }
-    return null;
+    // No token parameter needed - authentication uses HttpOnly cookies
+    return `${wsBaseUrl}/api/v1/ws/watchlist/${this.options.watchlistId}/prices`;
   }
 
   /**
