@@ -80,7 +80,7 @@ export class WebSocketClient {
   /**
    * Connect to WebSocket server
    */
-  public connect(): void {
+  public async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.warn("[WebSocket] Already connected");
       return;
@@ -90,7 +90,7 @@ export class WebSocketClient {
     this.setState(ConnectionState.CONNECTING);
 
     try {
-      const wsUrl = this.buildWebSocketUrl();
+      const wsUrl = await this.buildWebSocketUrl();
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = this.handleOpen.bind(this);
@@ -98,6 +98,7 @@ export class WebSocketClient {
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onclose = this.handleClose.bind(this);
     } catch (error) {
+      console.error("[WebSocket] Failed to connect:", error);
       this.handleError(error as Event);
     }
   }
@@ -132,18 +133,37 @@ export class WebSocketClient {
   }
 
   /**
-   * Build WebSocket URL
-   *
-   * Authentication is handled via HttpOnly cookies sent automatically
-   * by the browser in the WebSocket upgrade request headers.
+   * Fetch short-lived WebSocket authentication token
    */
-  private buildWebSocketUrl(): string {
+  private async fetchWebSocketToken(): Promise<string> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const response = await fetch(`${baseUrl}/api/v1/auth/ws-token`, {
+      credentials: "include", // Send HttpOnly cookies
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get WebSocket token: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.ws_token;
+  }
+
+  /**
+   * Build WebSocket URL with authentication token
+   *
+   * Fetches a short-lived token from the backend before connecting.
+   * The token is valid for 60 seconds and can only be used once.
+   */
+  private async buildWebSocketUrl(): Promise<string> {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const wsProtocol = baseUrl.startsWith("https") ? "wss" : "ws";
     const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol);
 
-    // No token parameter needed - authentication uses HttpOnly cookies
-    return `${wsBaseUrl}/api/v1/ws/watchlist/${this.options.watchlistId}/prices`;
+    // Fetch token
+    const token = await this.fetchWebSocketToken();
+
+    return `${wsBaseUrl}/api/v1/ws/watchlist/${this.options.watchlistId}/prices?token=${token}`;
   }
 
   /**
@@ -223,8 +243,12 @@ export class WebSocketClient {
       `[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts})...`
     );
 
-    this.reconnectTimeout = setTimeout(() => {
-      this.connect();
+    this.reconnectTimeout = setTimeout(async () => {
+      try {
+        await this.connect();
+      } catch (error) {
+        console.error("[WebSocket] Reconnection failed:", error);
+      }
     }, delay);
   }
 

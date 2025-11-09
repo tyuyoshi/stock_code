@@ -197,7 +197,7 @@ async def get_websocket_user(
     db: Session,
     redis_client: Redis,
 ) -> Optional[User]:
-    """Authenticate WebSocket connection using session cookie
+    """Authenticate WebSocket connection using short-lived token
 
     Args:
         websocket: WebSocket connection
@@ -207,20 +207,12 @@ async def get_websocket_user(
     Returns:
         Authenticated user or None if authentication fails
     """
-    # Extract session token from cookies (HttpOnly cookie)
-    cookie_header = websocket.headers.get("cookie", "")
-    session_token = None
+    # Extract token from query parameters
+    token = websocket.query_params.get("token")
 
-    # Parse cookies to find session token
-    for cookie in cookie_header.split(";"):
-        cookie = cookie.strip()
-        if cookie.startswith("stockcode_session="):
-            session_token = cookie.split("=", 1)[1]
-            break
-
-    if not session_token:
+    if not token:
         await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Missing authentication cookie"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Missing authentication token"
         )
         return None
 
@@ -230,18 +222,24 @@ async def get_websocket_user(
         )
         return None
 
-    # Validate session
-    session_data = get_session(session_token, redis_client)
-    if not session_data:
+    # Validate token from Redis
+    redis_key = f"ws_token:{token}"
+    user_id_str = redis_client.get(redis_key)
+
+    if not user_id_str:
         await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired session"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired token"
         )
         return None
 
-    user_id = session_data.get("user_id")
-    if not user_id:
+    # Delete token (one-time use for security)
+    redis_client.delete(redis_key)
+
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
         await websocket.close(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid session data"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token data"
         )
         return None
 
@@ -395,8 +393,9 @@ async def watchlist_price_stream(
     Each watchlist has only one price update task, shared by all connections.
 
     Authentication:
-        Uses HttpOnly session cookie (stockcode_session) sent automatically
-        by the browser in the WebSocket upgrade request headers.
+        Requires a short-lived token obtained from GET /api/v1/auth/ws-token
+        Token should be passed as a query parameter: ?token=xxx
+        Tokens are valid for 60 seconds and can only be used once.
 
     Message Format:
         {

@@ -119,7 +119,11 @@ export function useRealtimePrices(
         reconnectInterval: 3000,
       });
 
-      clientRef.current.connect();
+      // Connect is now async - handle promise
+      clientRef.current.connect().catch((err) => {
+        const error = err instanceof Error ? err : new Error(String(err));
+        handleError(error);
+      });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       handleError(error);
