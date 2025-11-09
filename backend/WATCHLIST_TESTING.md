@@ -88,7 +88,7 @@ JOIN companies c ON sp.company_id = c.id
 WHERE c.ticker_symbol IN ('7203', '6758', '9984', '4063', '8035');
 
 -- 株価データがない場合のみ追加 (31日分 × 5銘柄 = 155件)
-INSERT INTO stock_prices (company_id, date, open, high, low, close, volume, data_source)
+INSERT INTO stock_prices (company_id, date, open_price, high_price, low_price, close_price, volume, data_source)
 SELECT 
   c.id,
   CURRENT_DATE - (i || ' days')::interval,
