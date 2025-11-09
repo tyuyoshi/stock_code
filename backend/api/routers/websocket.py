@@ -52,7 +52,7 @@ class ConnectionManager:
             watchlist: Watchlist model instance
             yahoo_client: YahooFinanceClient instance
         """
-        await websocket.accept()
+        # Note: websocket.accept() is called in watchlist_price_stream() before this
         async with self._lock:
             if watchlist_id not in self.active_connections:
                 self.active_connections[watchlist_id] = set()
@@ -417,6 +417,9 @@ async def watchlist_price_stream(
             "timestamp": "2025-11-09T12:00:00"
         }
     """
+    # Accept the connection first (required by FastAPI)
+    await websocket.accept()
+
     # Authenticate user
     user = await get_websocket_user(websocket, db=db, redis_client=redis_client)
     if not user:
