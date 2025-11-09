@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function HomePage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -46,8 +46,8 @@ export default function HomePage() {
                 <span className="text-sm text-muted-foreground">
                   {user.email}
                 </span>
-                <Button variant="outline" asChild>
-                  <Link href="/api/auth/logout">ログアウト</Link>
+                <Button variant="outline" onClick={logout}>
+                  ログアウト
                 </Button>
               </>
             ) : (

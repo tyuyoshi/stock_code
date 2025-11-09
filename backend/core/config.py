@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     session_cookie_httponly: bool = True
     session_cookie_secure: bool = False
     session_cookie_samesite: str = "lax"
+    
+    # Frontend URL
+    frontend_url: str = "http://localhost:3000"
 
     @field_validator('cors_origins', mode='before')
     @classmethod

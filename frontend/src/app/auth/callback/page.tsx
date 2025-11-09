@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
       }
 
       await refreshUser();
-      router.push("/companies");
+      router.push("/");
     };
 
     handleCallback();

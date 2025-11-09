@@ -49,7 +49,7 @@ async def google_login(request: Request, redis_client: Redis = Depends(get_redis
         )
 
 
-@router.get("/google/callback", response_model=UserLoginResponse)
+@router.get("/google/callback")
 @limiter.limit(RateLimits.AUTH)
 async def google_callback(
     request: Request,
@@ -153,7 +153,12 @@ async def google_callback(
 
         session_token = create_session(user.id, redis_client)
 
-        response.set_cookie(
+        redirect_response = RedirectResponse(
+            url=f"{settings.frontend_url}/auth/callback",
+            status_code=status.HTTP_302_FOUND,
+        )
+        
+        redirect_response.set_cookie(
             key=settings.session_cookie_name,
             value=session_token,
             httponly=settings.session_cookie_httponly,
@@ -162,11 +167,7 @@ async def google_callback(
             max_age=settings.session_expire_days * 24 * 60 * 60,
         )
 
-        return UserLoginResponse(
-            user=UserResponse.model_validate(user),
-            session_token=session_token,
-            message="Login successful",
-        )
+        return redirect_response
 
     except HTTPException:
         raise
