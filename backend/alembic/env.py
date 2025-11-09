@@ -21,7 +21,16 @@ sys.path.append(str(Path(__file__).parents[2]))
 load_dotenv()
 
 # Import all models to ensure they're registered with metadata
-from models import Base, Company, FinancialStatement, StockPrice, FinancialIndicator  # noqa: E402
+from models import (  # noqa: E402
+    Base,
+    Company,
+    FinancialStatement,
+    StockPrice,
+    FinancialIndicator,
+    User,
+    Watchlist,
+    WatchlistItem,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
