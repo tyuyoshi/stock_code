@@ -13,7 +13,7 @@ def get_redis_client() -> Redis:
     """Get Redis client instance"""
     try:
         if settings.redis_url:
-            return Redis.from_url(settings.redis_url)
+            return Redis.from_url(settings.redis_url, decode_responses=True)
     except Exception as e:
         logger.warning(f"Failed to create Redis client: {e}")
     return None

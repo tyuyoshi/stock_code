@@ -1,6 +1,7 @@
 """
 Test configuration and fixtures for pytest
 """
+
 import os
 import sys
 from typing import Generator, Any
@@ -18,9 +19,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from models.company import Base as CompanyBase
 from models.financial import Base as FinancialBase
+from models.user import Base as UserBase
 from api.main import app
 from core.config import Settings
 from core.database import get_db
+from core.dependencies import get_redis_client
+import redis
 
 
 # Override settings for testing
@@ -29,12 +33,13 @@ def test_settings():
     """Test settings fixture"""
     # Get database URL from environment or use default
     import os
+
     database_url = os.getenv(
-        "DATABASE_URL", 
-        "postgresql://stockcode:stockcode123@localhost:5432/stock_code_test"
+        "DATABASE_URL",
+        "postgresql://stockcode:stockcode123@localhost:5432/stock_code_test",
     )
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/1")
-    
+
     return Settings(
         database_url=database_url,
         redis_url=redis_url,
@@ -42,7 +47,7 @@ def test_settings():
         secret_key="test_secret_key_for_testing_only",
         environment="test",
         cors_origins=["http://localhost:3000", "http://localhost:8000"],
-        debug=True
+        debug=True,
     )
 
 
@@ -53,7 +58,7 @@ def test_engine(test_settings):
     engine = create_engine(
         test_settings.database_url,
         poolclass=NullPool,  # Disable connection pooling for tests
-        echo=False
+        echo=False,
     )
     return engine
 
@@ -64,8 +69,10 @@ def setup_database(test_engine):
     # Create all tables
     CompanyBase.metadata.create_all(test_engine)
     FinancialBase.metadata.create_all(test_engine)
+    UserBase.metadata.create_all(test_engine)
     yield
     # Drop all tables after tests
+    UserBase.metadata.drop_all(test_engine)
     FinancialBase.metadata.drop_all(test_engine)
     CompanyBase.metadata.drop_all(test_engine)
 
@@ -75,29 +82,61 @@ def db_session(test_engine, setup_database) -> Generator[Session, None, None]:
     """Create a new database session for each test"""
     SessionLocal = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
     session = SessionLocal()
-    
+
+    yield session
+
+    session.close()
+
+    # Clean up all tables after test
+    from models.user import User
+    from models.company import Company
+    from models.financial import FinancialStatement, FinancialIndicator, StockPrice
+
+    session = SessionLocal()
     try:
-        yield session
-    finally:
+        session.query(User).delete()
+        session.query(FinancialIndicator).delete()
+        session.query(StockPrice).delete()
+        session.query(FinancialStatement).delete()
+        session.query(Company).delete()
+        session.commit()
+    except:
         session.rollback()
+    finally:
         session.close()
+
+
+# Redis fixtures
+@pytest.fixture(scope="function")
+def redis_client(test_settings):
+    """Create Redis client for testing"""
+    client = redis.from_url(test_settings.redis_url, decode_responses=True)
+    yield client
+    # Clean up Redis after test
+    client.flushdb()
+    client.close()
 
 
 # API Client fixtures
 @pytest.fixture(scope="function")
-def client(db_session) -> TestClient:
+def client(db_session, redis_client) -> TestClient:
     """Create FastAPI test client"""
+
     def get_db_override():
         try:
             yield db_session
         finally:
             pass
-    
+
+    def get_redis_override():
+        return redis_client
+
     app.dependency_overrides[get_db] = get_db_override
-    
+    app.dependency_overrides[get_redis_client] = get_redis_override
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
 
 
@@ -105,10 +144,10 @@ def client(db_session) -> TestClient:
 @pytest.fixture
 def mock_edinet_api():
     """Mock EDINET API client"""
-    with patch('services.edinet_client.EdinetClient') as mock:
+    with patch("services.edinet_client.EdinetClient") as mock:
         mock_instance = Mock()
         mock.return_value = mock_instance
-        
+
         # Setup default responses
         mock_instance.search_documents.return_value = {
             "results": [
@@ -118,34 +157,34 @@ def mock_edinet_api():
                     "filerName": "テスト株式会社",
                     "periodStart": "2023-04-01",
                     "periodEnd": "2024-03-31",
-                    "docTypeCode": "120"  # 有価証券報告書
+                    "docTypeCode": "120",  # 有価証券報告書
                 }
             ]
         }
-        
+
         mock_instance.get_document.return_value = b"<XBRL>test data</XBRL>"
-        
+
         yield mock_instance
 
 
 @pytest.fixture
 def mock_yahoo_finance():
     """Mock Yahoo Finance API"""
-    with patch('yfinance.Ticker') as mock:
+    with patch("yfinance.Ticker") as mock:
         mock_ticker = Mock()
         mock.return_value = mock_ticker
-        
+
         # Setup default responses
         mock_ticker.info = {
             "previousClose": 1500.0,
             "marketCap": 1000000000,
             "trailingPE": 15.0,
             "forwardPE": 14.0,
-            "dividendYield": 0.02
+            "dividendYield": 0.02,
         }
-        
+
         mock_ticker.history.return_value = Mock(Close=[1450, 1480, 1500])
-        
+
         yield mock_ticker
 
 
@@ -169,7 +208,7 @@ def sample_company_data():
         "shares_outstanding": 13974943300,
         "description": "Global automotive manufacturer",
         "website_url": "https://www.toyota.co.jp",
-        "headquarters_address": "愛知県豊田市トヨタ町1番地"
+        "headquarters_address": "愛知県豊田市トヨタ町1番地",
     }
 
 
@@ -192,7 +231,7 @@ def sample_financial_data():
         "cash_flow_financing": -789900000000,  # -790 billion yen
         "eps": 175.44,
         "bps": 1902.37,
-        "dividend_per_share": 35.00
+        "dividend_per_share": 35.00,
     }
 
 
@@ -242,14 +281,6 @@ def auth_headers():
     return {"Authorization": "Bearer test_token_12345"}
 
 
-@pytest.fixture(autouse=True)
-def reset_db_state(db_session):
-    """Reset database state after each test"""
-    yield
-    # Clean up any data created during test
-    db_session.rollback()
-    
-    
 # Markers for test organization
 def pytest_configure(config):
     """Register custom markers"""
@@ -259,9 +290,7 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "integration: Integration tests that may require database or API"
     )
-    config.addinivalue_line(
-        "markers", "slow: Tests that take longer than usual to run"
-    )
+    config.addinivalue_line("markers", "slow: Tests that take longer than usual to run")
     config.addinivalue_line(
         "markers", "requires_db: Tests that require database connection"
     )

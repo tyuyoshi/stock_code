@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     
     # Security headers
     security_headers_enabled: bool = True
+    
+    # Google OAuth 2.0
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
+    
+    # Session settings
+    session_expire_days: int = 7
+    session_cookie_name: str = "stockcode_session"
+    session_cookie_httponly: bool = True
+    session_cookie_secure: bool = False
+    session_cookie_samesite: str = "lax"
 
     @field_validator('cors_origins', mode='before')
     @classmethod

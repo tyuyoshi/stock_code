@@ -1,584 +1,378 @@
 # Backend - Stock Code API
 
-FastAPI-based backend service for the Stock Code financial analysis platform.
+FastAPIベースのバックエンドサービス。日本の上場企業の財務データ収集・処理・分析APIを提供します。
 
-## Overview
+## 概要
 
-This backend provides RESTful APIs for financial data collection, processing, and analysis of Japanese listed companies. Built with FastAPI, SQLAlchemy 2.0, and PostgreSQL.
+このバックエンドは、日本の上場企業に関する財務データの収集、処理、分析のためのRESTful APIを提供します。FastAPI、SQLAlchemy 2.0、PostgreSQLで構築されています。
 
-## Tech Stack
+## 技術スタック
 
-- **Framework**: FastAPI (Python 3.11+)
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Migrations**: Alembic
-- **Data Processing**: Pandas, NumPy, SciPy
-- **API Clients**: EDINET API, Yahoo Finance (yfinance)
-- **Testing**: pytest, pytest-asyncio, pytest-cov
-- **Cache**: Redis
-- **Security**: JWT authentication, Rate limiting
+- **フレームワーク**: FastAPI (Python 3.11+)
+- **データベース**: PostgreSQL with SQLAlchemy ORM
+- **マイグレーション**: Alembic
+- **データ処理**: Pandas, NumPy, SciPy
+- **APIクライアント**: EDINET API, Yahoo Finance (yfinance)
+- **認証**: Google OAuth 2.0, Redis Session Management
+- **テスト**: pytest, pytest-asyncio, pytest-cov
+- **キャッシュ**: Redis
+- **セキュリティ**: OAuth 2.0認証, Rate Limiting, CORS
 
-## Setup
+## セットアップ
 
-### Prerequisites
+### 前提条件
 
 - Python 3.11+
 - PostgreSQL 15+
 - Redis 7+
-- Virtual environment (venv)
+- 仮想環境 (venv)
 
-### Installation
+### インストール
 
-**IMPORTANT**: Always use virtual environment to keep local environment clean!
+**重要**: ローカル環境をクリーンに保つため、必ず仮想環境を使用してください！
 
 ```bash
-# Create and activate virtual environment
+# 仮想環境の作成と有効化
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# 依存パッケージのインストール
 pip install -r requirements.txt
 
-# Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your settings
+# 環境変数の設定
+# ⚠️ 注意: backend/.env.example は存在しません
+# プロジェクトルートの .env.example を使用してください
+cd /Users/tsuyoshi-hasegawa/Documents/workspace/github/private/stock_code
+cp .env.example backend/.env
+
+# backend/.env を編集して設定を行う
+vi backend/.env  # または任意のエディタ
 ```
 
-### Environment Variables
+### 環境変数
 
-Required in `.env`:
+`backend/.env` に以下を設定:
 
 ```env
-# Database
+# アプリケーション設定
+APP_NAME="Stock Code"
+ENVIRONMENT=development
+DEBUG=true
+
+# データベース
 DATABASE_URL=postgresql://stockcode:stockcode123@localhost:5432/stockcode
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
 
-# Security
-SECRET_KEY=your-secret-key-here
-JWT_ALGORITHM=HS256
+# Google OAuth 2.0（開発環境）
+GOOGLE_CLIENT_ID=120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=（Google Consoleから取得）
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
+
+# セッション設定
+SESSION_SECRET_KEY=（python -c "import secrets; print(secrets.token_urlsafe(32))" で生成）
+SESSION_EXPIRE_DAYS=7
+SESSION_COOKIE_HTTPONLY=true
+SESSION_COOKIE_SECURE=false  # 本番環境ではtrue
 
 # API Keys
 EDINET_API_KEY=your-edinet-api-key
-
-# Environment
-ENVIRONMENT=development
 ```
 
-## Database Migration (Alembic)
+## Google OAuth 2.0 認証設定
 
-We use Alembic with SQLAlchemy 2.0 for managing database schema migrations.
+### 開発用OAuth認証情報の作成
 
-### Configuration
+#### ステップ1: Google Cloud Consoleにアクセス
+1. [Google Cloud Console](https://console.cloud.google.com/) にアクセス
+2. プロジェクトを選択または作成（推奨: `stock-code-dev`）
 
-- **alembic.ini**: Main configuration file (timestamps in filenames, black formatting)
-- **alembic/env.py**: Environment configuration (DATABASE_URL from .env, SQLAlchemy 2.0 mode)
-- **models/__init__.py**: Aggregates all models for autogenerate
+#### ステップ2: OAuth 2.0 認証情報の作成
+1. **APIs & Services** > **認証情報** に移動
+2. **+ 認証情報を作成** > **OAuth クライアント ID**
+3. 同意画面の設定（初回のみ）:
+   - ユーザータイプ: **外部**
+   - アプリ名: Stock Code
+   - サポートメール: あなたのメールアドレス
+   - 開発者の連絡先: あなたのメールアドレス
+4. アプリケーションの種類: **ウェブアプリケーション**
+5. 名前: Stock Code Local Development
+6. 承認済みのリダイレクトURIを追加:
+   ```
+   http://localhost:8000/api/v1/auth/google/callback
+   ```
+7. **作成** をクリック
+8. **クライアントID** と **クライアントシークレット** をコピー
 
-### Common Commands
+#### ステップ3: 環境変数に設定
+```bash
+# backend/.env に以下を追加
+GOOGLE_CLIENT_ID=あなたのクライアントID.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=あなたのクライアントシークレット
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
-Always activate virtual environment first:
+# セッション秘密鍵を生成
+python -c "import secrets; print(f'SESSION_SECRET_KEY={secrets.token_urlsafe(32)}')"
+# 出力された値を SESSION_SECRET_KEY に設定
+```
+
+### ローカル環境でのテスト
+
+#### サービスの起動
+```bash
+# PostgreSQL と Redis を起動
+docker compose up postgres redis -d
+
+# 起動確認
+docker ps | grep -E "postgres|redis"
+
+# Redis 動作確認
+docker exec stock_code_redis redis-cli ping
+# PONG と表示されればOK
+```
+
+#### バックエンドサーバーの起動
+```bash
+cd backend
+source venv/bin/activate
+
+# マイグレーション実行（初回のみ）
+alembic upgrade head
+
+# サーバー起動
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### 認証フローのテスト
+
+**ブラウザでのテスト**:
+1. ブラウザで `http://localhost:8000/api/v1/auth/google/login` にアクセス
+2. Googleログイン画面にリダイレクトされる
+3. アプリケーションを承認
+4. コールバックURLにリダイレクトされ、JSONレスポンスが表示される
+5. `session_token` をコピー
+
+**APIテスト**:
+```bash
+# セッショントークンを環境変数に設定
+export TOKEN="あなたのセッショントークン"
+
+# ユーザー情報取得
+curl -H "Authorization: Bearer $TOKEN" \
+     http://localhost:8000/api/v1/auth/me
+
+# プロフィール更新
+curl -X PUT \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "investment_experience": "intermediate",
+       "investment_style": "long_term",
+       "interested_industries": ["technology", "finance"]
+     }' \
+     http://localhost:8000/api/v1/auth/profile
+
+# ログアウト
+curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     http://localhost:8000/api/v1/auth/logout
+```
+
+### 認証API エンドポイント
+
+| メソッド | エンドポイント | 説明 | 認証 |
+|---------|---------------|------|-----|
+| GET | `/api/v1/auth/google/login` | Googleログイン開始 | 不要 |
+| GET | `/api/v1/auth/google/callback?code=...` | OAuth認証コールバック | 不要 |
+| GET | `/api/v1/auth/me` | 現在のユーザー情報取得 | 必要 |
+| PUT | `/api/v1/auth/profile` | プロフィール更新 | 必要 |
+| POST | `/api/v1/auth/logout` | ログアウト | 必要 |
+
+### データベース・セッション確認
+
+**PostgreSQLでユーザー確認**:
+```bash
+docker exec -it stock_code_postgres psql -U stockcode -d stockcode
+
+# ユーザーテーブル確認
+SELECT id, email, name, role, investment_experience FROM users;
+
+\q  # 終了
+```
+
+**Redisでセッション確認**:
+```bash
+docker exec -it stock_code_redis redis-cli
+
+# セッション一覧
+KEYS session:*
+
+# 特定セッションの内容
+GET session:あなたのセッショントークン
+
+# 有効期限確認（秒単位）
+TTL session:あなたのセッショントークン
+
+exit  # 終了
+```
+
+## データベースマイグレーション
+
+### Alembicの使い方
+
+**マイグレーション確認**:
+```bash
+source venv/bin/activate
+alembic current  # 現在のマイグレーションバージョン確認
+alembic history  # マイグレーション履歴表示
+```
+
+**新しいマイグレーション作成**:
+```bash
+# モデル変更後、自動生成
+alembic revision --autogenerate -m "説明文"
+
+# 生成されたファイルを確認・編集
+# backend/alembic/versions/TIMESTAMP_説明文.py
+
+# マイグレーション適用
+alembic upgrade head
+```
+
+**マイグレーションのロールバック**:
+```bash
+# 1つ前に戻す
+alembic downgrade -1
+
+# 特定のバージョンに戻す
+alembic downgrade <revision_id>
+```
+
+## テスト
+
+### テスト実行
 
 ```bash
 source venv/bin/activate
-```
 
-#### Check Current Migration Status
-
-```bash
-alembic current
-# or use our helper script
-python migrations/run_migrations.py current
-```
-
-#### Create a New Migration
-
-Auto-generate from Model Changes (Recommended):
-
-```bash
-# After modifying models
-alembic revision --autogenerate -m "Add new feature"
-# or
-python migrations/run_migrations.py generate "Add new feature"
-```
-
-Create Empty Migration:
-
-```bash
-alembic revision -m "Custom migration"
-# or
-python migrations/run_migrations.py generate "Custom migration" --empty
-```
-
-#### Apply Migrations
-
-```bash
-# Upgrade to latest
-alembic upgrade head
-# or
-python migrations/run_migrations.py upgrade
-
-# Upgrade to specific revision
-alembic upgrade <revision_id>
-
-# Downgrade
-alembic downgrade -1  # One revision back
-alembic downgrade <revision_id>  # To specific revision
-```
-
-#### View Migration History
-
-```bash
-alembic history --verbose
-# or
-python migrations/run_migrations.py history
-```
-
-### Production Deployment
-
-Generate SQL for DBA Review (Offline Mode):
-
-```bash
-# Generate SQL without executing
-alembic upgrade head --sql > migration.sql
-# or
-python migrations/run_migrations.py upgrade --sql > migration.sql
-
-# Review the SQL, then apply manually or via script
-```
-
-### Docker Integration
-
-When using Docker Compose, migrations run automatically on container startup:
-
-```bash
-docker compose up  # Migrations run before server starts
-```
-
-### Migration Best Practices
-
-1. **Always Review Auto-generated Migrations**
-   - Table/column renames are detected as drop + create
-   - Custom SQL functions or triggers not detected
-   - Some constraint changes may be missed
-
-2. **Test Migrations**
-   ```bash
-   alembic upgrade head
-   alembic downgrade -1
-   alembic upgrade head
-   ```
-
-3. **Naming Conventions**
-   - ✅ "Add user preferences table"
-   - ✅ "Add index on company ticker_symbol"
-   - ❌ "Update database"
-   - ❌ "Fix stuff"
-
-4. **Handle Existing Databases**
-   ```bash
-   # Mark database as up-to-date with initial migration
-   alembic stamp head
-   # or
-   python migrations/run_migrations.py stamp head
-   ```
-
-### Migration Troubleshooting
-
-#### Connection Issues
-
-1. Check DATABASE_URL in .env
-2. Ensure PostgreSQL is running: `docker compose ps`
-3. Test connection: `python migrations/run_migrations.py check`
-
-#### Migration Conflicts
-
-```bash
-# Check current state
-alembic current
-alembic history
-
-# Resolve by merging or creating a merge revision
-alembic merge -m "Merge migrations" <rev1> <rev2>
-```
-
-#### Reset Database (Development Only!)
-
-```bash
-# Drop all tables and recreate
-alembic downgrade base
-alembic upgrade head
-```
-
-## Running the Application
-
-### Development Server
-
-```bash
-# With virtual environment activated
-uvicorn api.main:app --reload --port 8000
-```
-
-### With Docker
-
-```bash
-docker compose up backend
-```
-
-The API will be available at http://localhost:8000
-
-## API Documentation
-
-Once running, access:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-## Testing
-
-### Run Tests
-
-```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Run all tests
+# 全テスト実行
 pytest
 
-# With coverage
+# カバレッジ付き実行
 pytest --cov=. --cov-report=html
 
-# Run specific test file
-pytest tests/test_edinet_client.py
+# 特定のテストファイルのみ
+pytest tests/test_auth.py
 
-# Run with Docker database
-./run_tests.sh
+# 特定のテストケースのみ
+pytest tests/test_auth.py::test_google_login_redirect
 ```
 
-### Test Structure
-
-```
-tests/
-├── conftest.py          # Shared fixtures
-├── test_security.py     # Security tests
-├── test_financial_indicators.py  # Financial calculation tests
-├── test_edinet_client.py  # EDINET API tests
-└── test_xbrl_parser.py  # XBRL parsing tests
-```
-
-### Current Coverage
-
-- Overall: 78% coverage
-- 93 tests total
-- Key areas tested:
-  - Security middleware
-  - Financial indicators (60+ indicators)
-  - EDINET API integration
-  - XBRL parsing
-
-## Project Structure
-
-```
-backend/
-├── alembic/             # Database migrations
-│   ├── versions/        # Migration files (timestamped)
-│   ├── env.py          # Environment configuration
-│   └── README          # Alembic info
-├── api/                # API endpoints
-│   ├── main.py         # FastAPI app
-│   └── routers/        # API routers
-├── core/               # Core configuration
-│   ├── config.py       # Settings management
-│   ├── database.py     # Database connection
-│   └── security.py     # Security utilities
-├── models/             # SQLAlchemy models
-│   ├── __init__.py     # Model aggregation
-│   ├── company.py      # Company model
-│   └── financial.py    # Financial models
-├── services/           # Business logic
-│   ├── edinet_client.py    # EDINET API client
-│   ├── xbrl_parser.py      # XBRL parser
-│   └── data_processor.py   # Financial calculations
-├── migrations/         # Migration utilities
-│   └── run_migrations.py   # Helper script
-├── tests/              # Test files
-├── alembic.ini         # Alembic configuration
-├── requirements.txt    # Python dependencies
-├── pytest.ini          # Pytest configuration
-└── README.md          # This file
-```
-
-## Development Guidelines
-
-### Code Style
-
+### テストカバレッジ確認
 ```bash
-# Format code
+# HTMLレポート生成
+pytest --cov=. --cov-report=html
+
+# ブラウザで確認
+open htmlcov/index.html  # macOS
+```
+
+## 開発
+
+### コードフォーマット
+```bash
+# Black フォーマッター
 black .
 
-# Lint
+# Flake8 リント
 flake8
 
-# Type checking
+# 型チェック
 mypy .
 ```
 
-### Git Workflow
+### API ドキュメント
 
-1. Create feature branch from main
-2. Make changes
-3. Run tests
-4. Format code
-5. Create PR with tests passing
+サーバー起動後、以下のURLでインタラクティブなAPIドキュメントにアクセスできます:
 
-### Adding New Features
+- **Swagger UI**: http://localhost:8000/api/docs
+- **ReDoc**: http://localhost:8000/api/redoc
 
-1. **Models**: Add to `models/`, update `models/__init__.py`
-2. **Migrations**: Run `alembic revision --autogenerate -m "Description"`
-3. **API Endpoints**: Add to `api/routers/`
-4. **Business Logic**: Add to `services/`
-5. **Tests**: Add to `tests/`
+## トラブルシューティング
 
-## Security Notes
+### よくあるエラーと対処法
 
-1. Never commit `.env` files with production credentials
-2. Use read-only database users for generating SQL in production
-3. Always backup database before applying migrations in production
-4. Test migrations in staging environment first
-5. Keep dependencies updated for security patches
+#### エラー: "redirect_uri_mismatch"
+- Google Consoleの承認済みリダイレクトURIと `.env` の `GOOGLE_REDIRECT_URI` が完全一致しているか確認
+- 末尾のスラッシュ有無、HTTP/HTTPSを確認
 
-## CI/CD Integration
-
-For GitHub Actions:
-
-```yaml
-- name: Run migrations
-  run: |
-    cd backend
-    source venv/bin/activate
-    alembic upgrade head
-
-- name: Run tests
-  run: |
-    cd backend
-    source venv/bin/activate
-    pytest --cov
-```
-
-## Troubleshooting
-
-### Common Issues
-
-- **Import errors**: Ensure virtual environment is activated
-- **Database connection failed**: Check DATABASE_URL and PostgreSQL status
-- **Redis connection failed**: Check REDIS_URL and Redis status
-- **Port already in use**: Kill process on port 8000 or use different port
-
-### Useful Commands
-
+#### エラー: "Session service unavailable"
 ```bash
-# Check PostgreSQL connection
-docker compose exec postgres psql -U stockcode -d stockcode
+# Redisが起動しているか確認
+docker ps | grep redis
 
-# View logs
-docker compose logs backend
-
-# Reset database (development)
-alembic downgrade base && alembic upgrade head
-
-# Generate requirements
-pip freeze > requirements.txt
+# 起動していない場合
+docker compose up redis -d
 ```
 
-## Yahoo Finance Integration
-
-### Overview
-
-Yahoo Finance integration provides real-time and historical stock price data for Japanese listed companies. The integration includes automated data collection, API endpoints, and comprehensive testing.
-
-### Features
-
-- **Real-time Data**: Current stock prices via Yahoo Finance API
-- **Historical Data**: Up to 5+ years of historical price data
-- **Japanese Stock Support**: Automatic ticker formatting (.T suffix)
-- **Rate Limiting**: Built-in delays to respect API limits
-- **Caching**: Redis integration for improved performance
-- **Error Handling**: Comprehensive error handling and logging
-
-### Setup and Testing
-
-#### 1. Sample Data Creation
-
+#### エラー: "Not authenticated"（有効なトークンのはず）
 ```bash
-# Create sample companies for testing
-python -c "
-from core.database import SessionLocal
-from models.company import Company
+# Redisにセッションが存在するか確認
+docker exec stock_code_redis redis-cli GET session:あなたのトークン
 
-db = SessionLocal()
-companies = [
-    Company(ticker_symbol='7203', company_name_jp='トヨタ自動車株式会社'),
-    Company(ticker_symbol='9984', company_name_jp='ソフトバンクグループ株式会社'),
-    Company(ticker_symbol='6758', company_name_jp='ソニーグループ株式会社')
-]
-
-for company in companies:
-    existing = db.query(Company).filter(Company.ticker_symbol == company.ticker_symbol).first()
-    if not existing:
-        db.add(company)
-
-db.commit()
-db.close()
-"
+# 存在しない場合は再ログイン（セッション期限切れまたはRedis再起動）
 ```
 
-#### 2. Historical Data Backfill
-
+#### データベース接続エラー
 ```bash
-# Backfill 1 month of data for testing
-python scripts/backfill_stock_prices.py --tickers 7203 --period 1mo
+# PostgreSQLが起動しているか確認
+docker ps | grep postgres
 
-# Backfill multiple tickers
-python scripts/backfill_stock_prices.py --tickers 7203 9984 6758 --period 1mo
-
-# Backfill with custom date range
-python scripts/backfill_stock_prices.py --tickers 7203 --start-date 2024-01-01 --end-date 2024-12-31
-
-# Dry run to see what would be processed
-python scripts/backfill_stock_prices.py --dry-run
+# DATABASE_URLが正しいか確認
+echo $DATABASE_URL  # または .env ファイルを確認
 ```
 
-#### 3. API Testing
+## プロジェクト構成
 
-```bash
-# Start API server
-uvicorn api.main:app --reload
-
-# Run automated API tests
-python test_api_manual.py
-
-# Manual endpoint testing
-curl "http://localhost:8000/api/v1/stock-prices/7203/latest"
-curl "http://localhost:8000/api/v1/stock-prices/7203/historical?days=30"
-curl "http://localhost:8000/api/v1/stock-prices/7203/chart?period=1mo"
-curl "http://localhost:8000/api/v1/stock-prices/?tickers=7203&tickers=9984"
+```
+backend/
+├── api/              # APIエンドポイント
+│   ├── main.py      # FastAPIアプリケーション
+│   └── routers/     # ルーター（auth, companies, screening, etc）
+├── core/            # コア機能
+│   ├── config.py    # 設定管理
+│   ├── database.py  # データベース接続
+│   ├── auth.py      # 認証ミドルウェア
+│   └── sessions.py  # セッション管理
+├── models/          # SQLAlchemyモデル
+│   ├── user.py      # ユーザーモデル
+│   ├── company.py   # 企業モデル
+│   └── financial.py # 財務データモデル
+├── services/        # ビジネスロジック
+│   ├── google_oauth.py      # Google OAuth クライアント
+│   ├── edinet_client.py     # EDINET API クライアント
+│   ├── yahoo_finance_client.py  # Yahoo Finance クライアント
+│   └── data_processor.py    # データ処理
+├── schemas/         # Pydanticスキーマ（リクエスト/レスポンス）
+├── batch/           # バッチジョブ
+│   └── daily_update.py  # 日次株価更新
+├── tests/           # テストコード
+├── alembic/         # データベースマイグレーション
+└── requirements.txt # 依存パッケージ
 ```
 
-### API Endpoints
+## セキュリティに関する注意事項
 
-#### Stock Prices
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/stock-prices/{ticker}/latest` | GET | Latest price with change calculation |
-| `/api/v1/stock-prices/{ticker}/historical` | GET | Historical data with date filtering |
-| `/api/v1/stock-prices/{ticker}/chart` | GET | Chart data for various periods |
-| `/api/v1/stock-prices/` | GET | Multiple tickers (use `?tickers=A&tickers=B`) |
+- ✅ `backend/.env` は `.gitignore` に含まれています（Gitにコミットされません）
+- ✅ クライアントシークレットは `.env` にのみ記載
+- ✅ 本番環境では環境変数を Secret Manager で管理
+- ✅ HTTPOnly Cookie でXSS攻撃を防止
+- ✅ SameSite Cookie でCSRF攻撃を防止
+- ✅ SQLAlchemyのパラメータ化クエリでSQLインジェクションを防止
 
-#### Companies (New - Issue #35)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/companies/` | GET | Company list with search and pagination |
-| `/api/v1/companies/{id}` | GET | Company details by ID |
-| `/api/v1/companies/{id}/financials` | GET | Company financial statements |
-| `/api/v1/companies/{id}/indicators` | GET | Company financial indicators |
-| `/api/v1/companies/` | POST | Create new company |
-| `/api/v1/companies/{id}` | PUT | Update company information |
-| `/api/v1/companies/{id}` | DELETE | Delete company |
+## その他のドキュメント
 
-#### Screening (New - Issue #35)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/screening/` | POST | Execute custom screening filters |
-| `/api/v1/screening/presets` | GET | Get predefined screening presets |
-| `/api/v1/screening/presets/{preset_id}` | GET | Execute preset screening |
-| `/api/v1/screening/fields` | GET | Get available screening fields |
-
-#### Company Comparison (New - Issue #35)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/compare/` | POST | Compare multiple companies |
-| `/api/v1/compare/templates` | GET | Get comparison templates |
-| `/api/v1/compare/templates/{template_id}` | POST | Compare using template |
-| `/api/v1/compare/metrics` | GET | Get available comparison metrics |
-
-#### Data Export (New - Issue #35)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/export/companies` | POST | Export companies data (CSV/Excel) |
-| `/api/v1/export/screening` | POST | Export screening results |
-| `/api/v1/export/comparison` | POST | Export comparison results |
-| `/api/v1/export/financial-data` | POST | Export financial data |
-| `/api/v1/export/templates` | GET | Get export templates |
-| `/api/v1/export/formats` | GET | Get supported export formats |
-
-### Daily Batch Jobs
-
-The daily batch job automatically updates stock prices:
-
-```bash
-# Manual execution for testing
-python -c "
-import asyncio
-from batch.daily_update import DailyUpdateJob
-
-async def test_daily_job():
-    job = DailyUpdateJob()
-    await job.run()
-
-asyncio.run(test_daily_job())
-"
-```
-
-### Troubleshooting
-
-#### yfinance Issues
-
-```bash
-# Check yfinance version (should be 0.2.66+)
-python -c "import yfinance as yf; print(f'yfinance: {yf.__version__}')"
-
-# Update if needed
-pip install --upgrade yfinance
-
-# Test individual ticker
-python -c "
-import yfinance as yf
-ticker = yf.Ticker('7203.T')
-hist = ticker.history(period='1mo')
-print(f'Records: {len(hist)}')
-"
-```
-
-#### Live Data Errors
-
-- **503 errors**: Usually indicate market closure or temporary API issues
-- **Timezone errors**: Market may be closed or ticker delisted
-- **Rate limiting**: Increase delays in batch processing
-
-#### Database Issues
-
-```bash
-# Check stock price data
-python -c "
-from core.database import SessionLocal
-from models.financial import StockPrice
-db = SessionLocal()
-count = db.query(StockPrice).count()
-print(f'Stock price records: {count}')
-db.close()
-"
-```
-
-### Performance Notes
-
-- **Backfill Speed**: ~23 records/company/second
-- **API Response Time**: <200ms for cached data
-- **Rate Limiting**: 0.5s delay between requests
-- **Memory Usage**: ~50MB for 1000+ tickers
-
-## Further Reading
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [SQLAlchemy 2.0 Documentation](https://docs.sqlalchemy.org/en/20/)
-- [Alembic Documentation](https://alembic.sqlalchemy.org/)
-- [PostgreSQL Best Practices](https://wiki.postgresql.org/wiki/Don%27t_Do_This)
-- [yfinance Documentation](https://github.com/ranaroussi/yfinance)
+- **プロジェクト全体の概要**: `/CLAUDE.md`
+- **テスト詳細**: `/backend/TESTING.md`
+- **開発ガイドライン**: `/CLAUDE.md` の Development Guidelines セクション
