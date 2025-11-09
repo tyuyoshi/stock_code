@@ -37,7 +37,9 @@ export default function WatchlistPage() {
             ウォッチリストを表示するにはログインしてください
           </p>
           <button
-            onClick={() => (window.location.href = "/api/v1/auth/google/login")}
+            onClick={() =>
+              (window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google/login`)
+            }
             className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             ログイン
