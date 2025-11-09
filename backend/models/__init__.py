@@ -9,6 +9,7 @@ from core.database import Base
 from models.company import Company
 from models.financial import FinancialStatement, StockPrice, FinancialIndicator
 from models.user import User
+from models.watchlist import Watchlist, WatchlistItem
 
 # Export all models and Base for Alembic
 __all__ = [
@@ -18,6 +19,8 @@ __all__ = [
     'StockPrice',
     'FinancialIndicator',
     'User',
+    'Watchlist',
+    'WatchlistItem',
 ]
 
 # This ensures all models are loaded when importing from models
