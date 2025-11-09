@@ -40,7 +40,6 @@ class ConnectionManager:
         watchlist_id: int,
         watchlist,
         yahoo_client,
-        db: Session,
     ):
         """Accept and register a new WebSocket connection
 
@@ -52,7 +51,6 @@ class ConnectionManager:
             watchlist_id: ID of the watchlist
             watchlist: Watchlist model instance
             yahoo_client: YahooFinanceClient instance
-            db: Database session
         """
         await websocket.accept()
         async with self._lock:
@@ -63,7 +61,7 @@ class ConnectionManager:
             # Start background task only if this is the first connection
             if watchlist_id not in self.background_tasks:
                 task = asyncio.create_task(
-                    self._price_update_worker(watchlist_id, watchlist, yahoo_client, db)
+                    self._price_update_worker(watchlist_id, watchlist, yahoo_client)
                 )
                 self.background_tasks[watchlist_id] = task
                 logger.info(
@@ -101,19 +99,19 @@ class ConnectionManager:
 
         logger.info(f"WebSocket disconnected from watchlist {watchlist_id}")
 
-    async def _price_update_worker(
-        self, watchlist_id: int, watchlist, yahoo_client, db: Session
-    ):
+    async def _price_update_worker(self, watchlist_id: int, watchlist, yahoo_client):
         """Background worker that periodically fetches and broadcasts prices
 
         This runs as a single task per watchlist, regardless of how many
         clients are connected. Prevents duplicate API calls and memory leaks.
 
+        Creates a fresh database session for each iteration to prevent
+        connection pool exhaustion in long-running background tasks.
+
         Args:
             watchlist_id: ID of the watchlist
             watchlist: Watchlist model instance
             yahoo_client: YahooFinanceClient instance
-            db: Database session
         """
         try:
             while True:
@@ -125,8 +123,10 @@ class ConnectionManager:
                         )
                         break
 
-                # Fetch prices once for all connections
+                # Create fresh DB session for this iteration
+                db = next(get_db())
                 try:
+                    # Fetch prices once for all connections
                     price_data = await fetch_watchlist_prices(
                         watchlist, yahoo_client, db
                     )
@@ -135,6 +135,9 @@ class ConnectionManager:
                     logger.error(
                         f"Error fetching prices for watchlist {watchlist_id}: {e}"
                     )
+                finally:
+                    # Always close DB session to prevent connection pool exhaustion
+                    db.close()
 
                 # Wait 5 seconds before next update
                 await asyncio.sleep(5)
@@ -434,7 +437,7 @@ async def watchlist_price_stream(
         return
 
     # Connect the WebSocket (starts background task if first connection)
-    await manager.connect(websocket, watchlist_id, watchlist, yahoo_client, db)
+    await manager.connect(websocket, watchlist_id, watchlist, yahoo_client)
 
     try:
         # Send initial data to this connection

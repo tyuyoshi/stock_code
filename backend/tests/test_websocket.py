@@ -154,7 +154,7 @@ class TestConnectionManager:
 
         # Connect
         await manager.connect(
-            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
         )
         assert watchlist_id in manager.active_connections
         assert mock_websocket in manager.active_connections[watchlist_id]
@@ -182,7 +182,7 @@ class TestConnectionManager:
 
         # Connect first client - should create background task
         await manager.connect(
-            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client
         )
         assert len(manager.active_connections[watchlist_id]) == 1
         assert watchlist_id in manager.background_tasks
@@ -190,10 +190,10 @@ class TestConnectionManager:
 
         # Connect second and third clients - should reuse same background task
         await manager.connect(
-            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client
         )
         await manager.connect(
-            mock_ws3, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws3, watchlist_id, test_watchlist, mock_yahoo_client
         )
         assert len(manager.active_connections[watchlist_id]) == 3
         assert manager.background_tasks[watchlist_id] is first_task  # Same task!
@@ -240,10 +240,10 @@ class TestConnectionManager:
         watchlist_id = test_watchlist.id
 
         await manager.connect(
-            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws1, watchlist_id, test_watchlist, mock_yahoo_client
         )
         await manager.connect(
-            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws2, watchlist_id, test_watchlist, mock_yahoo_client
         )
 
         message = {"type": "price_update", "data": "test"}
@@ -269,10 +269,10 @@ class TestConnectionManager:
         watchlist_id = test_watchlist.id
 
         await manager.connect(
-            mock_ws_good, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws_good, watchlist_id, test_watchlist, mock_yahoo_client
         )
         await manager.connect(
-            mock_ws_bad, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_ws_bad, watchlist_id, test_watchlist, mock_yahoo_client
         )
 
         message = {"type": "test"}
@@ -298,7 +298,7 @@ class TestConnectionManager:
 
         # Connect and verify task is created
         await manager.connect(
-            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client, db_session
+            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
         )
         assert watchlist_id in manager.background_tasks
         task = manager.background_tasks[watchlist_id]
@@ -329,29 +329,33 @@ class TestConnectionManager:
 
         watchlist_id = test_watchlist.id
 
-        # Connect all 10 websockets concurrently
-        connect_tasks = [
-            manager.connect(
-                ws, watchlist_id, test_watchlist, mock_yahoo_client, db_session
-            )
-            for ws in websockets
-        ]
-        await asyncio.gather(*connect_tasks)
+        # Mock get_db to return db_session for background worker
+        with patch("api.routers.websocket.get_db") as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
 
-        # Should have exactly 10 connections
-        assert len(manager.active_connections[watchlist_id]) == 10
+            # Connect all 10 websockets concurrently
+            connect_tasks = [
+                manager.connect(ws, watchlist_id, test_watchlist, mock_yahoo_client)
+                for ws in websockets
+            ]
+            await asyncio.gather(*connect_tasks)
 
-        # Should have exactly 1 background task (not 10!)
-        assert len(manager.background_tasks) == 1
-        assert watchlist_id in manager.background_tasks
+            # Should have exactly 10 connections
+            assert len(manager.active_connections[watchlist_id]) == 10
 
-        # Disconnect all concurrently
-        disconnect_tasks = [manager.disconnect(ws, watchlist_id) for ws in websockets]
-        await asyncio.gather(*disconnect_tasks)
+            # Should have exactly 1 background task (not 10!)
+            assert len(manager.background_tasks) == 1
+            assert watchlist_id in manager.background_tasks
 
-        # All should be cleaned up
-        assert watchlist_id not in manager.active_connections
-        assert watchlist_id not in manager.background_tasks
+            # Disconnect all concurrently
+            disconnect_tasks = [
+                manager.disconnect(ws, watchlist_id) for ws in websockets
+            ]
+            await asyncio.gather(*disconnect_tasks)
+
+            # All should be cleaned up
+            assert watchlist_id not in manager.active_connections
+            assert watchlist_id not in manager.background_tasks
 
     @pytest.mark.asyncio
     async def test_price_update_worker_stops_when_no_connections(
@@ -366,20 +370,24 @@ class TestConnectionManager:
 
         watchlist_id = test_watchlist.id
 
-        # Connect
-        await manager.connect(
-            mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client, db_session
-        )
-        task = manager.background_tasks[watchlist_id]
+        # Mock get_db to return db_session for background worker
+        with patch("api.routers.websocket.get_db") as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
 
-        # Disconnect immediately
-        await manager.disconnect(mock_websocket, watchlist_id)
+            # Connect
+            await manager.connect(
+                mock_websocket, watchlist_id, test_watchlist, mock_yahoo_client
+            )
+            task = manager.background_tasks[watchlist_id]
 
-        # Wait for background task to notice and exit
-        await asyncio.sleep(0.2)
+            # Disconnect immediately
+            await manager.disconnect(mock_websocket, watchlist_id)
 
-        # Task should be done (cancelled or exited naturally)
-        assert task.done() or task.cancelled()
+            # Wait for background task to notice and exit
+            await asyncio.sleep(0.2)
+
+            # Task should be done (cancelled or exited naturally)
+            assert task.done() or task.cancelled()
 
 
 class TestWebSocketAuthentication:
