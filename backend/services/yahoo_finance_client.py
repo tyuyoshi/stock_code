@@ -146,12 +146,12 @@ class YahooFinanceClient:
                 return cached_data
         
         try:
-            # Global rate limiting (token bucket)
+            # Global rate limiting (token bucket) or legacy fallback
             if self.rate_limiter:
                 await self.rate_limiter.acquire()
-
-            # Legacy rate limiting (kept for backward compatibility)
-            await asyncio.sleep(self.rate_limit_delay)
+            else:
+                # Fallback: legacy fixed delay when Redis unavailable
+                await asyncio.sleep(self.rate_limit_delay)
 
             # Fetch data from Yahoo Finance
             ticker = yf.Ticker(formatted_ticker)
@@ -215,12 +215,12 @@ class YahooFinanceClient:
         formatted_ticker = self._format_ticker(ticker_symbol)
         
         try:
-            # Global rate limiting (token bucket)
+            # Global rate limiting (token bucket) or legacy fallback
             if self.rate_limiter:
                 await self.rate_limiter.acquire()
-
-            # Legacy rate limiting (kept for backward compatibility)
-            await asyncio.sleep(self.rate_limit_delay)
+            else:
+                # Fallback: legacy fixed delay when Redis unavailable
+                await asyncio.sleep(self.rate_limit_delay)
 
             # Fetch historical data
             ticker = yf.Ticker(formatted_ticker)
@@ -273,12 +273,12 @@ class YahooFinanceClient:
             return cached_data
         
         try:
-            # Global rate limiting (token bucket)
+            # Global rate limiting (token bucket) or legacy fallback
             if self.rate_limiter:
                 await self.rate_limiter.acquire()
-
-            # Legacy rate limiting (kept for backward compatibility)
-            await asyncio.sleep(self.rate_limit_delay)
+            else:
+                # Fallback: legacy fixed delay when Redis unavailable
+                await asyncio.sleep(self.rate_limit_delay)
 
             # Fetch company info
             ticker = yf.Ticker(formatted_ticker)
@@ -323,12 +323,12 @@ class YahooFinanceClient:
         formatted_ticker = self._format_ticker(ticker_symbol)
         
         try:
-            # Global rate limiting (token bucket)
+            # Global rate limiting (token bucket) or legacy fallback
             if self.rate_limiter:
                 await self.rate_limiter.acquire()
-
-            # Legacy rate limiting (kept for backward compatibility)
-            await asyncio.sleep(self.rate_limit_delay)
+            else:
+                # Fallback: legacy fixed delay when Redis unavailable
+                await asyncio.sleep(self.rate_limit_delay)
 
             # Fetch dividend data
             ticker = yf.Ticker(formatted_ticker)
@@ -381,12 +381,12 @@ class YahooFinanceClient:
         formatted_ticker = self._format_ticker(ticker_symbol)
         
         try:
-            # Global rate limiting (token bucket)
+            # Global rate limiting (token bucket) or legacy fallback
             if self.rate_limiter:
                 await self.rate_limiter.acquire()
-
-            # Legacy rate limiting (kept for backward compatibility)
-            await asyncio.sleep(self.rate_limit_delay)
+            else:
+                # Fallback: legacy fixed delay when Redis unavailable
+                await asyncio.sleep(self.rate_limit_delay)
 
             # Fetch stock split data
             ticker = yf.Ticker(formatted_ticker)

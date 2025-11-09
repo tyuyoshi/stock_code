@@ -192,6 +192,8 @@ class TokenBucketRateLimiter:
         This method will block until tokens are available or timeout is reached.
         Tokens are refilled automatically based on elapsed time.
 
+        Uses atomic Lua script to prevent race conditions.
+
         Args:
             tokens: Number of tokens to acquire (default: 1)
             timeout: Max wait time in seconds (default: 30.0)
@@ -216,41 +218,22 @@ class TokenBucketRateLimiter:
         start_time = time.time()
 
         while True:
-            # Refill tokens based on elapsed time
-            await self._refill_tokens()
+            # Try to consume tokens atomically (refill + consume in one operation)
+            success, remaining = await self._atomic_acquire(tokens)
 
-            # Try to consume tokens
-            current_tokens = await self._get_tokens()
-
-            if current_tokens >= tokens:
-                # Consume tokens atomically
-                new_count = await asyncio.to_thread(
-                    self.redis.incrbyfloat,
-                    self.tokens_key,
-                    -tokens
+            if success:
+                logger.debug(
+                    f"Acquired {tokens} tokens. "
+                    f"Remaining: {remaining:.2f}/{self.max_tokens}"
                 )
-
-                # Double-check we didn't go negative (race condition)
-                if new_count >= 0:
-                    logger.debug(
-                        f"Acquired {tokens} tokens. "
-                        f"Remaining: {new_count:.2f}/{self.max_tokens}"
-                    )
-                    return True
-                else:
-                    # Undo the decrement (race condition occurred)
-                    await asyncio.to_thread(
-                        self.redis.incrbyfloat,
-                        self.tokens_key,
-                        tokens
-                    )
+                return True
 
             # Check timeout
             elapsed = time.time() - start_time
             if elapsed >= timeout:
                 logger.warning(
                     f"Token acquisition timeout after {elapsed:.2f}s. "
-                    f"Current tokens: {current_tokens:.2f}"
+                    f"Current tokens: {remaining:.2f}"
                 )
                 return False
 
@@ -258,9 +241,85 @@ class TokenBucketRateLimiter:
             wait_time = min(tokens / self.refill_rate, 1.0)
             logger.debug(
                 f"Waiting {wait_time:.2f}s for tokens. "
-                f"Need: {tokens}, Available: {current_tokens:.2f}"
+                f"Need: {tokens}, Available: {remaining:.2f}"
             )
             await asyncio.sleep(wait_time)
+
+    async def _atomic_acquire(self, tokens: int) -> tuple[bool, float]:
+        """
+        Atomically refill and consume tokens using Lua script
+
+        This prevents race conditions by performing both refill and
+        consumption in a single Redis operation.
+
+        Args:
+            tokens: Number of tokens to acquire
+
+        Returns:
+            Tuple of (success: bool, remaining_tokens: float)
+        """
+        now = time.time()
+
+        # Atomic refill + consume Lua script
+        lua_script = """
+        local tokens_key = KEYS[1]
+        local last_refill_key = KEYS[2]
+        local now = tonumber(ARGV[1])
+        local max_tokens = tonumber(ARGV[2])
+        local refill_rate = tonumber(ARGV[3])
+        local tokens_requested = tonumber(ARGV[4])
+
+        -- Get current state
+        local last_refill = tonumber(redis.call('GET', last_refill_key) or now)
+        local current_tokens = tonumber(redis.call('GET', tokens_key) or max_tokens)
+
+        -- Calculate elapsed time and refill
+        local elapsed = now - last_refill
+        if elapsed > 0 then
+            current_tokens = math.min(
+                current_tokens + (elapsed * refill_rate),
+                max_tokens
+            )
+        end
+
+        -- Try to consume tokens
+        if current_tokens >= tokens_requested then
+            -- Success: consume tokens and update state
+            local new_tokens = current_tokens - tokens_requested
+            redis.call('SET', tokens_key, new_tokens)
+            redis.call('SET', last_refill_key, now)
+            return {1, new_tokens}  -- success=1, remaining tokens
+        else
+            -- Failure: not enough tokens, but update refill time
+            redis.call('SET', tokens_key, current_tokens)
+            redis.call('SET', last_refill_key, now)
+            return {0, current_tokens}  -- success=0, current tokens
+        end
+        """
+
+        try:
+            result = await asyncio.to_thread(
+                self.redis.eval,
+                lua_script,
+                2,  # Number of keys
+                self.tokens_key,
+                self.last_refill_key,
+                now,
+                self.max_tokens,
+                self.refill_rate,
+                tokens
+            )
+
+            # result = [success (0 or 1), remaining_tokens]
+            success = bool(result[0])
+            remaining = float(result[1])
+            return success, remaining
+
+        except Exception as e:
+            logger.error(f"Failed to acquire tokens atomically: {e}")
+            # Fallback: return failure with estimated tokens
+            current_tokens = await self._get_tokens()
+            return False, current_tokens
 
     async def _refill_tokens(self):
         """

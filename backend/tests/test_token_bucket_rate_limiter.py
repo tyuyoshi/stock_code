@@ -260,3 +260,101 @@ async def test_yahoo_client_integration(redis_client):
     # After integration, the rate limiter should still be accessible
     assert client.rate_limiter.max_tokens == 100  # Default from settings
     assert client.rate_limiter.refill_rate == 0.5  # Default from settings
+
+
+@pytest.mark.asyncio
+async def test_atomic_token_consumption_no_race_condition(redis_client):
+    """
+    Test that atomic Lua script prevents race conditions
+
+    This test verifies that concurrent token acquisitions cannot over-consume
+    tokens due to the atomic refill+consume operation.
+    """
+    limiter = TokenBucketRateLimiter(
+        redis_client=redis_client,
+        max_tokens=20,
+        refill_rate=1.0,  # Slow refill to test atomicity
+        key_prefix="test:rate_limit:yahoo_api"
+    )
+
+    # Clean up test keys
+    redis_client.delete("test:rate_limit:yahoo_api:tokens")
+    redis_client.delete("test:rate_limit:yahoo_api:last_refill")
+
+    # Simulate 30 concurrent requests trying to acquire 1 token each
+    # Initial: 20 tokens available, refill: 1 token/sec
+    async def try_acquire():
+        return await limiter.acquire(1, timeout=0.05)  # Very short timeout
+
+    tasks = [try_acquire() for _ in range(30)]
+    results = await asyncio.gather(*tasks)
+
+    # Count successful acquisitions
+    successful = sum(results)
+    failed = len(results) - successful
+
+    # Most should succeed from initial bucket (20 tokens)
+    # A few more might succeed due to refill during timeout
+    # Key assertion: no over-consumption (successful <= 20 + small refill margin)
+    assert 20 <= successful <= 22, \
+        f"Expected 20-22 successes (20 initial + ~1-2 refilled), got {successful}"
+    assert 8 <= failed <= 10, f"Expected 8-10 failures, got {failed}"
+
+    # Verify token count is near 0 (no significant over-consumption)
+    stats = await limiter.get_stats()
+    assert -0.5 <= stats['current_tokens'] <= 1.0, \
+        f"Expected tokens near 0, got {stats['current_tokens']}"
+
+    # Clean up
+    redis_client.delete("test:rate_limit:yahoo_api:tokens")
+    redis_client.delete("test:rate_limit:yahoo_api:last_refill")
+
+
+@pytest.mark.asyncio
+async def test_atomic_refill_and_consume(redis_client):
+    """
+    Test that refill and consume happen atomically
+
+    Verifies that tokens are refilled correctly even during concurrent access.
+    """
+    limiter = TokenBucketRateLimiter(
+        redis_client=redis_client,
+        max_tokens=10,
+        refill_rate=5.0,  # Fast refill: 5 tokens/sec
+        key_prefix="test:rate_limit:yahoo_api"
+    )
+
+    # Clean up test keys
+    redis_client.delete("test:rate_limit:yahoo_api:tokens")
+    redis_client.delete("test:rate_limit:yahoo_api:last_refill")
+
+    # Consume all tokens
+    for _ in range(10):
+        result = await limiter.acquire(1)
+        assert result is True
+
+    # Check tokens depleted
+    stats = await limiter.get_stats()
+    assert stats['current_tokens'] < 1.0
+
+    # Wait for refill (0.5s * 5 tokens/sec = 2.5 tokens)
+    await asyncio.sleep(0.5)
+
+    # Should be able to acquire 2 tokens now
+    result1 = await limiter.acquire(1)
+    result2 = await limiter.acquire(1)
+    assert result1 is True
+    assert result2 is True
+
+    # Third should fail or wait (not enough tokens yet)
+    result3 = await limiter.acquire(1, timeout=0.1)
+    # May succeed or fail depending on timing, but token count should be consistent
+
+    # Verify final state is consistent
+    final_stats = await limiter.get_stats()
+    assert 0 <= final_stats['current_tokens'] <= 10, \
+        f"Token count out of bounds: {final_stats['current_tokens']}"
+
+    # Clean up
+    redis_client.delete("test:rate_limit:yahoo_api:tokens")
+    redis_client.delete("test:rate_limit:yahoo_api:last_refill")
