@@ -161,6 +161,8 @@ async def google_callback(
         redirect_response.set_cookie(
             key=settings.session_cookie_name,
             value=session_token,
+            domain=settings.session_cookie_domain,
+            path=settings.session_cookie_path,
             httponly=settings.session_cookie_httponly,
             secure=settings.session_cookie_secure,
             samesite=settings.session_cookie_samesite,
@@ -235,6 +237,10 @@ async def logout(
 
     delete_session(session_token, redis_client)
 
-    response.delete_cookie(key=settings.session_cookie_name)
+    response.delete_cookie(
+        key=settings.session_cookie_name,
+        domain=settings.session_cookie_domain,
+        path=settings.session_cookie_path
+    )
 
     return LogoutResponse(message="Logout successful")

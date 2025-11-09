@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     session_cookie_httponly: bool = True
     session_cookie_secure: bool = False
     session_cookie_samesite: str = "lax"
+    session_cookie_domain: Optional[str] = "localhost"  # localhost for dev, None for production
+    session_cookie_path: str = "/"
     
     # Frontend URL
     frontend_url: str = "http://localhost:3000"
