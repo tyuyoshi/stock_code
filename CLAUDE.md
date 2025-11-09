@@ -107,11 +107,18 @@ npm run build           # Production build
 5. **Batch Jobs**: 
    - ✅ **Daily stock price updates** - Automated Yahoo Finance data collection (PR #75)
    - 🔄 Quarterly financial data updates (planned)
-6. **User Features** (Started - 2025/11/08):
-   - ✅ **Google OAuth Authentication** - Complete OAuth 2.0 flow with Redis sessions (Issue #34 - Completed 2025/11/08)
-   - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50) - Unblocked
-   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked
-   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52) - Unblocked
+6. **User Features** (Google OAuth Completed - 2025/11/09):
+   - ✅ **Google OAuth Authentication** - Complete OAuth 2.0 flow with Redis sessions (Issue #34, PR #105 - Merged 2025/11/09)
+     - Complete authentication system with CSRF protection (OAuth state parameter)
+     - 5 auth endpoints: login, callback, me, profile, logout
+     - Redis session management with 7-day TTL, HTTPOnly cookies
+     - Role-based access control (free/premium/enterprise)
+     - 19 comprehensive tests (17 passing)
+     - Race condition handling for concurrent user creation
+     - Production-ready security (rate limiting, error sanitization, transaction safety)
+   - 🔄 **Watchlist Management** - Portfolio tracking (Issue #50) - Unblocked by Issue #34
+   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked by Issue #34
+   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52) - Unblocked by Issue #34
    - 🔄 **Analyst Coverage** - Rating & coverage info (Issue #49)
    - 🔄 **GA4 Integration** - Marketing analytics (Issue #53)
 
@@ -172,11 +179,13 @@ gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
 gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
 ```
 
-### Issue Status (as of 2025/11/08 - Updated after Issue #34 completion)
+### Issue Status (as of 2025/11/09 - Issue cleanup completed)
 - **Total Issues**: 101 total
-- **Closed**: 20 (#6, #13, #17, #27, #30, #32, #33, #34, #35, #37, #63, #64, #65, #66, #74, #80-82, #83, #85, #88)
-- **Open**: 81
-- **High Priority**: #22, #90, #100 (Core development priorities)
+- **Closed**: 29 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #27, #30, #32, #33, #34, #35, #36, #37, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88)
+  - **Issue #34 merged**: Google OAuth 2.0 implementation (PR #105) - 2025/11/09
+  - **Issue cleanup**: 8 duplicate/completed issues closed - 2025/11/09
+- **Open**: 72
+- **High Priority**: #22, #50, #90, #100 (Next development phase priorities)
 - **New Issues** (2025/11/08): 
   - #94 (Performance test reliability - Issue #88 follow-up)
   - #95 (Query plan validation - Issue #88 follow-up)
@@ -215,6 +224,32 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
 詳細な設定手順は `backend/README.md` の「Google OAuth 2.0 認証設定」セクションを参照
 
+## Dependency Updates
+
+### PR #108: authlib 1.6.5 Security Update
+**Status**: ⏸️ **Blocked by CI/CD configuration** (Issue #109)
+
+**Dependency**: authlib 1.3.0 → 1.6.5
+
+**Security Fixes**:
+- DoS vulnerability fixes (JWE/JWS size limits)
+- CVE fixes for JOSE libraries
+- Security improvements from 7 releases (1.3.0 → 1.6.5)
+
+**Blocker**: GitHub Actions環境でOAuth認証情報未設定
+- `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` がCI/CD環境で必要
+- PR #105 (Google OAuth実装) で追加された起動時検証により、環境変数未設定でテスト失敗
+
+**Next Action**: 
+1. Issue #109 を解決 (GitHub Secrets設定 or テスト環境で検証スキップ)
+2. CI/CD グリーン確認
+3. PR #108 マージ
+
+**関連**:
+- Issue #109: Fix CI/CD environment for OAuth credentials
+- Issue #34: Google OAuth 2.0 認証実装 (完了)
+- PR #105: Google OAuth実装 (マージ済み - 2025/11/09)
+
 ## Known Issues and TODOs
 
 ### Critical Security Items (Must fix before production)
@@ -222,7 +257,7 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 - ✅ **python-multipart DoS vulnerability** fixed (Issue #64 - Completed 2025/11/01)
 - ✅ **aiohttp multiple vulnerabilities** fixed (Issue #65 - Completed 2025/11/01)
 - ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
-- **Google OAuth Authentication** implementation in progress (Issue #34)
+- ⏸️ **authlib security update** blocked (Issue #109 - PR #108 waiting for CI/CD fix)
 
 ### Core Features Completed
 - ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
@@ -282,30 +317,47 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Security: Field injection protection, N+1 query fix, parameterized queries
   - 12 comprehensive test cases with 78% coverage maintained
   - Follow-up issues created: #98 (code quality), #99 (performance testing), #100 (audit logging), #101 (export history)
-- ✅ **Google OAuth Authentication completed** (Issue #34) - 2025/11/08
+- ✅ **Google OAuth Authentication completed** (Issue #34, PR #105) - Merged 2025/11/09
   - Complete OAuth 2.0 flow with Google Identity Platform
   - User model with investment profile (experience, style, industries)
   - Redis-based session management (7-day TTL, secure cookies)
   - Authentication middleware with role-based access control (free/premium/enterprise)
   - 5 auth endpoints: login, callback, me, profile update, logout
-  - 18 comprehensive tests (unit + integration)
-  - Production-ready security (HTTPOnly cookies, email verification)
-  - Complete setup guide (backend/GOOGLE_OAUTH_SETUP.md)
+  - 19 comprehensive tests (17 passing, 2 skipped)
+  - Production-ready security features:
+    - CSRF protection with OAuth state parameter (5-min TTL, one-time use)
+    - Rate limiting (5 req/min on auth endpoints)
+    - Error sanitization (generic client messages, detailed server logs)
+    - Transaction safety with rollback
+    - Race condition handling for concurrent user creation
+    - HTTPOnly cookies with SameSite=lax
+    - Email verification enforcement
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/08 - Post Issue #34 completion)
+### Next Session Priority (Updated 2025/11/09 - After issue cleanup)
 
-1. **Frontend development start** (Issue #22) - Next.js setup, auth UI, protected routes 🔥
-2. **Watchlist Management** (Issue #50) - Now unblocked by Issue #34 🔥
-3. **Audit logging implementation** (Issue #100) - Export security and user tracking 🔥
-4. **Test coverage enhancement** (Issue #90) - Error cases & integration tests ⚡
-5. **Alert Notifications** (Issue #51) - Now unblocked by Issue #34 ⚡
+**Phase 1: Frontend Foundation** (1-2 weeks) 🔥
+1. **Issue #22**: Next.js setup - App Router, auth context, protected routes
 
-### GitHub Issue Cleanup Completed (2025/11/08)
+**Phase 2: User Features** (2-3 weeks) 🔥  
+2. **Issue #50**: Watchlist Management - Database models, CRUD API, UI (Unblocked by #34)
+3. **Issue #100**: Audit logging - Export operations tracking, compliance (Unblocked by #34)
+
+**Phase 3: Quality & Engagement** (1-2 weeks) ⚡
+4. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
+5. **Issue #51**: Alert Notifications - Price alerts, email/app notifications (Unblocked by #34)
+
+### GitHub Issue Cleanup History
+
+**2025/11/09 Cleanup**:
+- ✅ **8 duplicate/completed issues** closed (#2, #8, #16, #18-21, #36, #59)
+- ✅ **Dependency relationships** clarified for user features (#50, #51, #52, #100)
+- ✅ **Priority labels** updated for next development phase (#22, #50, #100 → HIGH)
+- ✅ **Total reduction**: 101 issues → 72 open (29% reduction)
+
+**2025/11/08 Cleanup**:
 - ✅ **5 duplicate issues** closed and consolidated (#37, #74, #80-82)
-- ✅ **Dependency relationships** clarified with comments and blocking notices
-- ✅ **Priority labels** standardized across all issues
 - ✅ **Development roadmap** optimized for efficiency
 
 ## Docker Safe Operation Guidelines ⚠️
