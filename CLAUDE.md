@@ -6,6 +6,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Stock Code is an enterprise financial analysis SaaS platform for Japanese listed companies, similar to Buffett Code. The platform collects, analyzes, and visualizes financial data from EDINET API and other sources.
 
+## Language Guidelines / 言語ガイドライン
+
+### Development Language / 開発言語
+
+**IMPORTANT**: Claude Code must follow these language rules for consistency and team collaboration.
+
+- **Thinking/Design/Coding**: **English** (英語で思考・設計・コーディング)
+  - Internal reasoning, architecture design, code implementation
+  - All code (functions, classes, variables) in English
+  - Code comments in English
+
+- **Documentation/Reports**: **Japanese** (日本語でドキュメント・レポート作成)
+  - Session reports and progress updates to the user
+  - Documentation files (README.md sections for Japanese users)
+  - User-facing explanations and summaries
+
+- **GitHub Issues/PRs**: **Japanese** (日本語でIssue・PR作成)
+  - Issue titles, descriptions, and comments
+  - Pull request titles, descriptions, and comments
+  - Commit messages
+
+- **Code Comments**: **English** (コード内コメントは英語)
+  - Inline comments, docstrings, type hints
+
+### Examples / 例
+
+✅ **Correct**:
+```python
+# Code in English
+def calculate_financial_indicators(company_data: dict) -> dict:
+    """Calculate ROE, ROA, and other financial indicators."""
+    return indicators
+```
+
+```markdown
+Issue Title: 機能: 財務指標計算機能の実装
+PR Title: 修正: WebSocketメモリリークの解消 (#125)
+Commit: feat: 企業詳細ページのUI実装
+```
+
+❌ **Incorrect**:
+```python
+# Mixing languages in code
+def 財務指標計算(company_data):  # Wrong: Function name in Japanese
+    """ROEとROAを計算する"""  # Wrong: Docstring in Japanese
+```
+
+```markdown
+Issue Title: Implement Financial Indicators Calculation  # Wrong: English title
+Commit: Implement company details page UI  # Wrong: English commit
+```
+
 ## Technology Stack
 
 - **Backend**: FastAPI (Python 3.11+), SQLAlchemy, PostgreSQL
@@ -247,24 +299,42 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - WebSocket PR #122 merged with follow-up issues)
+### Issue Status (as of 2025/11/09 - Major Cleanup Complete)
 
 - **Total Issues**: 131 total
-- **Closed**: 34 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #50, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88, #109, #117)
-  - **Issue #22 completed**: Next.js 14 App Router setup (PR #110 - Merged 2025/11/09) - Frontend foundation established
-  - **Issue #34 merged**: Google OAuth 2.0 implementation (PR #105 - Merged 2025/11/09)
-  - **Issue #50 completed**: Watchlist management (PR #121 - Merged 2025/11/09) - Complete portfolio tracking
-  - **Issue #109 completed**: CI/CD OAuth credentials fix (PR #116 - Merged 2025/11/09)
-  - **Issue #117 completed**: WebSocket real-time price updates (PR #122 - Merged 2025/11/09) - Live streaming backend
-  - **Issue cleanup**: 8 duplicate/completed issues closed - 2025/11/09
-- **Open**: 97
-- **High Priority**: #23-25 (Frontend UI pages), #90 (Test coverage), #100 (Audit logging), #123 (Frontend WebSocket), #125 (WebSocket performance fix), #127 (Rate limiting)
-- **New Issues** (2025/11/09):
-  - **Frontend follow-ups** (PR #110 review): #111-115 (test coverage, error boundaries, CSP, Storybook)
-  - **Export follow-ups** (Issue #83): #99-101 (performance testing, audit logging, history tracking)
-  - **Watchlist Phase 2** (Issue #50 follow-ups): #118-120 (analysis API, sharing, groups)
-  - **WebSocket follow-ups** (Issue #117): #123 (Frontend client), #124 (Monitoring)
-  - **WebSocket performance** (PR #122 review): #125 (Centralized broadcasting), #127 (Rate limiting), #128 (Market hours), #129 (DB optimization), #130 (Compression), #131 (Connection pooling)
+- **Closed**: 44 issues (comprehensive cleanup completed)
+  - **Recently Closed** (2025/11/09 cleanup):
+    - #5 (Cloud Scheduler - completed in #85)
+    - #9 (Daily batch job - completed in #85)
+    - #26 (Responsive design - completed in PR #110)
+    - #38 (Frontend bundle - merged into #113)
+    - #53 (GA4 integration - merged into #111)
+    - #56, #60, #61, #69 (Testing - merged into #90)
+    - #98 (Code quality - ongoing maintenance)
+    - #101 (Export history - merged into #100)
+    - #102 (Email tests - fixed in PR #105)
+    - #127 (Rate limiting - duplicate of #126)
+  - **Major Completions** (2025/11/09):
+    - #22: Next.js 14 App Router (PR #110 - Frontend foundation)
+    - #34: Google OAuth 2.0 (PR #105 - Authentication system)
+    - #50: Watchlist management (PR #121 - Portfolio tracking)
+    - #117: WebSocket real-time (PR #122 - Live price streaming)
+  - **Previous completions**: #2, #6, #8, #13, #16-22, #27, #30, #32-37, #50, #59, #63-66, #74, #80-83, #85, #88, #109
+- **Open**: 87 issues (10% reduction from 97)
+- **High Priority** (16 issues - accurately prioritized):
+  - **Core Features**: #23 (Company details), #24 (Screening UI), #123 (Frontend WebSocket), #118 (Portfolio analysis)
+  - **Performance Fixes**: #125 (WebSocket memory leak - CRITICAL), #126 (Rate limiting)
+  - **Quality & Compliance**: #90 (Test coverage 78%→90%), #100 (Audit logging)
+  - **Other**: #1, #3, #9, #12, #51, #76, #77, #107
+- **Consolidated Issues**:
+  - **#90** (Test coverage) ← Merged #56, #60, #61, #69
+  - **#100** (Audit logging) ← Merged #101 (export history)
+  - **#111** (Frontend testing) ← Merged #53 (GA4 analytics)
+  - **#113** (Performance monitoring) ← Merged #38 (bundle optimization)
+- **Low Priority** (Correctly downgraded):
+  - #15 (Time series analysis - future feature)
+  - #25 (Chart visualization - nice-to-have)
+  - #131 (Connection pooling - premature optimization)
 
 ## External APIs Used
 
@@ -406,46 +476,68 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/09 - After PR #122 merge with review feedback)
+### Next Session Priority (Updated 2025/11/09 - After Major Issue Cleanup)
 
-**Phase 1: WebSocket Performance Fixes** (Week 1) 🔥
+**Phase 1: WebSocket Performance Fixes** (Week 1) 🔥 CRITICAL
 1. **Issue #125**: Centralized price broadcasting - Fix memory leak (HIGH)
    - Single background task per watchlist (not per connection)
    - 90% reduction in API calls and memory usage
    - Critical fix from PR #122 review
-2. **Issue #127**: Yahoo Finance API rate limiting (HIGH)
+2. **Issue #126**: Yahoo Finance API rate limiting (HIGH)
    - Token bucket algorithm with Redis
    - Prevent 429 errors and IP blocking
+   - Note: #127 closed as duplicate
 
-**Phase 2: Frontend Real-time Features** (Week 2) 🔥
+**Phase 2: Frontend Real-time Features** (Week 2) 🔥 HIGH
 3. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
    - WebSocket client with auto-reconnect
    - useRealtimePrices React Hook
    - WatchlistTable real-time updates
 4. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
 
-**Phase 3: WebSocket Optimizations** (Week 3) ⚡
-5. **Issue #128**: Market hours optimization - Adaptive polling (MEDIUM)
-6. **Issue #129**: Database query optimization - Caching (MEDIUM)
-7. **Issue #130**: Message compression - Bandwidth reduction (MEDIUM)
+**Phase 3: Core Frontend Pages** (Weeks 3-5) 🔥 HIGH
+5. **Issue #23**: Company Details Page - Financial data visualization (HIGH)
+   - Ready to start (frontend foundation complete)
+   - Backend APIs available (Issue #35)
+6. **Issue #24**: Screening Interface - Advanced filtering UI (HIGH)
+   - Ready to start (frontend foundation complete)
+   - Backend APIs available (Issue #35)
 
-**Phase 4: Frontend Pages** (Weeks 4-6) 🔥
-8. **Issue #23**: Company Details Page - Financial data visualization (Ready to start)
-9. **Issue #24**: Screening Interface - Advanced filtering UI (Ready to start)
-10. **Issue #25**: Chart Visualization - Interactive stock price charts (Ready to start)
+**Phase 4: Quality & Compliance** (Week 6) ⚡ HIGH
+7. **Issue #100**: Audit logging - Export operations, compliance (HIGH)
+   - Now includes export history tracking (merged from #101)
+8. **Issue #90**: Test coverage enhancement - Integration tests, error cases (MEDIUM)
+   - Target: 78% → 90%+
+   - Consolidated from #56, #60, #61, #69
 
-**Phase 5: Quality & Compliance** (Future) ⚡
-11. **Issue #100**: Audit logging - Export operations tracking, compliance (HIGH)
-12. **Issue #90**: Test coverage enhancement - Integration tests, error cases (78% → 90%+)
+**Phase 5: WebSocket Optimizations** (Future) ⚡ MEDIUM
+9. **Issue #128**: Market hours optimization - Adaptive polling
+10. **Issue #129**: Database query optimization - Caching
+11. **Issue #130**: Message compression - Bandwidth reduction
+
+**Phase 6: Nice-to-Have Features** (Future) 🔵 LOW
+12. **Issue #25**: Chart Visualization - Interactive stock price charts (LOW)
 13. **Issue #131**: Connection pooling - Resource limits (LOW, defer until scale needed)
 
 ### GitHub Issue Cleanup History
 
-**2025/11/09 Cleanup**:
+**2025/11/09 Major Cleanup** (Second cleanup of the day):
+- ✅ **10 issues closed**: #5, #9, #26, #38, #53, #56, #60, #61, #69, #98, #101, #102, #127
+  - 5 completed issues (#5, #9, #26, #102)
+  - 1 duplicate (#127 → #126)
+  - 1 not-separate-issue (#98)
+  - 4 merged into umbrella issues (#38→#113, #53→#111, #101→#100, #56,#60,#61,#69→#90)
+- ✅ **4 umbrella issues** strengthened with merged scope
+- ✅ **8 issues** updated with high-priority labels (#23, #24, #123, #125)
+- ✅ **3 issues** correctly downgraded to low-priority (#15, #25, #131)
+- ✅ **3 frontend issues** updated with ready-to-start status (#23, #24, #25)
+- ✅ **Total reduction**: 97 issues → 87 open (10% reduction, 29% total from morning)
+
+**2025/11/09 Morning Cleanup** (First cleanup):
 - ✅ **8 duplicate/completed issues** closed (#2, #8, #16, #18-21, #36, #59)
 - ✅ **Dependency relationships** clarified for user features (#50, #51, #52, #100)
 - ✅ **Priority labels** updated for next development phase (#22, #50, #100 → HIGH)
-- ✅ **Total reduction**: 101 issues → 72 open (29% reduction)
+- ✅ **Total reduction**: 101 issues → 97 open (4% reduction)
 
 **2025/11/08 Cleanup**:
 - ✅ **5 duplicate issues** closed and consolidated (#37, #74, #80-82)
