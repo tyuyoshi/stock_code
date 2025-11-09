@@ -189,12 +189,46 @@ npm run build           # Production build
 
 ### Issue Management Guidelines
 
-**IMPORTANT**: All new issues MUST be added to the GitHub Project board immediately after creation.
+**CRITICAL RULE**: All new issues MUST be added to the GitHub Project board immediately after creation.
+
+#### Required Steps When Creating an Issue
 
 ```bash
-# When creating a new issue, always add it to the project
+# Step 1: Create the issue
 gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
+
+# Step 2: Get the issue number (latest created issue)
+ISSUE_NUM=$(gh issue list --repo tyuyoshi/stock_code --limit 1 --json number --jq '.[0].number')
+
+# Step 3: Add to Project board #5 (REQUIRED!)
+gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/$ISSUE_NUM
+
+# Or manually with known issue number:
 gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
+```
+
+#### GitHub CLI Setup (One-time)
+
+If you encounter permission errors, refresh authentication with required scopes:
+
+```bash
+# For reading project data
+gh auth refresh -s read:project
+
+# For adding items to project board (REQUIRED for issue creation)
+gh auth refresh -s project
+```
+
+#### Verification
+
+Check that all open issues are in the project:
+
+```bash
+# List issues in project board
+gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items[].content.number] | sort'
+
+# List all open issues
+gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
 ### Issue Status (as of 2025/11/09 - Frontend foundation completed)
