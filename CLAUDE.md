@@ -231,14 +231,15 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - Frontend foundation completed)
+### Issue Status (as of 2025/11/09 - Security updates completed)
 
 - **Total Issues**: 116 total
-- **Closed**: 31 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88)
+- **Closed**: 32 (#2, #6, #8, #13, #16, #17, #18, #19, #20, #21, #22, #27, #30, #32, #33, #34, #35, #36, #37, #59, #63, #64, #65, #66, #74, #80-82, #83, #85, #88, #109)
   - **Issue #22 completed**: Next.js 14 App Router setup (PR #110 - Merged 2025/11/09) - Frontend foundation established
   - **Issue #34 merged**: Google OAuth 2.0 implementation (PR #105 - Merged 2025/11/09)
+  - **Issue #109 completed**: CI/CD OAuth credentials fix (PR #116 - Merged 2025/11/09)
   - **Issue cleanup**: 8 duplicate/completed issues closed - 2025/11/09
-- **Open**: 85
+- **Open**: 84
 - **High Priority**: #23-25 (Frontend UI pages), #50 (Watchlist), #90 (Test coverage), #100 (Audit logging)
 - **New Issues** (2025/11/09 - PR #110 review follow-ups):
   - #111 (Frontend test coverage - Jest, RTL, E2E)
@@ -282,15 +283,15 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 ## Dependency Updates
 
 ### PR #116: authlib 1.6.5 Security Update
-**Status**: ✅ **Pending review** (Resolves Dependabot alerts #27-30, Issue #109)
+**Status**: ✅ **Merged** - 2025/11/09 (Resolved Dependabot alerts #27-30, Issue #109)
 
 **Dependency**: authlib 1.3.0 → 1.6.5
 
-**Security Fixes**:
-- Alert #29 (HIGH): DoS via Oversized JOSE Segments → Fixed in 1.6.5
-- Alert #28 (HIGH): JWS/JWT accepts unknown crit headers (RFC violation) → Fixed in 1.6.4
-- Alert #27 (HIGH): Algorithm confusion with asymmetric public keys → Fixed in 1.3.1
-- Alert #30 (MEDIUM): JWE zip=DEF decompression bomb DoS → Fixed in 1.6.5
+**Security Fixes** (All alerts auto-closed):
+- ✅ Alert #29 (HIGH): DoS via Oversized JOSE Segments → Fixed in 1.6.5
+- ✅ Alert #28 (HIGH): JWS/JWT accepts unknown crit headers (RFC violation) → Fixed in 1.6.4
+- ✅ Alert #27 (HIGH): Algorithm confusion with asymmetric public keys → Fixed in 1.3.1
+- ✅ Alert #30 (MEDIUM): JWE zip=DEF decompression bomb DoS → Fixed in 1.6.5
 
 **CI/CD Fix** (Issue #109 resolved):
 - Modified `backend/api/main.py` to skip OAuth validation in test environment
@@ -312,7 +313,7 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 - ✅ **python-multipart DoS vulnerability** fixed (Issue #64 - Completed 2025/11/01)
 - ✅ **aiohttp multiple vulnerabilities** fixed (Issue #65 - Completed 2025/11/01)
 - ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
-- 🔄 **authlib security update** in review (PR #116 - Resolves alerts #27-30 & Issue #109)
+- ✅ **authlib security update** completed (PR #116 - Merged 2025/11/09, alerts #27-30 fixed)
 
 ### Core Features Completed
 - ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
