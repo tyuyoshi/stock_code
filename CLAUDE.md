@@ -208,6 +208,14 @@ npm run build           # Production build
      - Proper asyncio.Task lifecycle management
      - Memory leak eliminated through centralized price updates
      - 19 tests passing with updated architecture
+   - ✅ **Yahoo Finance API Rate Limiting** - Token Bucket algorithm (Issue #126, PR #133 - Merged 2025/11/09)
+     - Token Bucket rate limiting with Redis backend (100 tokens, 0.5/sec refill)
+     - Atomic Lua scripts preventing race conditions in distributed systems
+     - Integrated into 5 Yahoo Finance API methods
+     - 429 error and IP blocking prevention
+     - 12 comprehensive unit tests with atomic behavior verification
+     - 20% performance improvement (removed double rate limiting)
+     - Production-ready with graceful degradation (legacy fallback without Redis)
    - 🔄 **Frontend WebSocket Client** - React/Next.js real-time UI (Issue #123) - Ready to start
    - 🔄 **WebSocket Monitoring** - Metrics and performance optimization (Issue #124) - Ready to start
    - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked by Issue #34
@@ -484,46 +492,50 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
   - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
 - 🚀 User features ready for development (Issues #50-53)
 
-### Next Session Priority (Updated 2025/11/09 - After Issue #125 Completion)
+### Next Session Priority (Updated 2025/11/09 - After Issue #126 Completion)
 
-**Phase 1: API Rate Limiting** (Week 1) 🔥 CRITICAL
-1. **Issue #126**: Yahoo Finance API rate limiting (HIGH)
-   - Token bucket algorithm with Redis
-   - Prevent 429 errors and IP blocking
-   - Note: #127 closed as duplicate
-
-**Phase 2: Frontend Real-time Features** (Week 2) 🔥 HIGH
-3. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
+**Phase 1: Frontend Real-time Features** (Week 1-2) 🔥 HIGH
+1. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
    - WebSocket client with auto-reconnect
    - useRealtimePrices React Hook
    - WatchlistTable real-time updates
-4. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
+2. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
 
-**Phase 3: Core Frontend Pages** (Weeks 3-5) 🔥 HIGH
-5. **Issue #23**: Company Details Page - Financial data visualization (HIGH)
+**Phase 2: Core Frontend Pages** (Weeks 3-5) 🔥 HIGH
+3. **Issue #23**: Company Details Page - Financial data visualization (HIGH)
    - Ready to start (frontend foundation complete)
    - Backend APIs available (Issue #35)
-6. **Issue #24**: Screening Interface - Advanced filtering UI (HIGH)
+4. **Issue #24**: Screening Interface - Advanced filtering UI (HIGH)
    - Ready to start (frontend foundation complete)
    - Backend APIs available (Issue #35)
 
-**Phase 4: Quality & Compliance** (Week 6) ⚡ HIGH
-7. **Issue #100**: Audit logging - Export operations, compliance (HIGH)
+**Phase 3: Quality & Compliance** (Week 6) ⚡ HIGH
+5. **Issue #100**: Audit logging - Export operations, compliance (HIGH)
    - Now includes export history tracking (merged from #101)
-8. **Issue #90**: Test coverage enhancement - Integration tests, error cases (MEDIUM)
+6. **Issue #90**: Test coverage enhancement - Integration tests, error cases (MEDIUM)
    - Target: 78% → 90%+
    - Consolidated from #56, #60, #61, #69
 
-**Phase 5: WebSocket Optimizations** (Future) ⚡ MEDIUM
-9. **Issue #128**: Market hours optimization - Adaptive polling
-10. **Issue #129**: Database query optimization - Caching
-11. **Issue #130**: Message compression - Bandwidth reduction
+**Phase 4: WebSocket Optimizations** (Future) ⚡ MEDIUM
+7. **Issue #128**: Market hours optimization - Adaptive polling
+8. **Issue #129**: Database query optimization - Caching
+9. **Issue #130**: Message compression - Bandwidth reduction
 
-**Phase 6: Nice-to-Have Features** (Future) 🔵 LOW
-12. **Issue #25**: Chart Visualization - Interactive stock price charts (LOW)
-13. **Issue #131**: Connection pooling - Resource limits (LOW, defer until scale needed)
+**Phase 5: Nice-to-Have Features** (Future) 🔵 LOW
+10. **Issue #25**: Chart Visualization - Interactive stock price charts (LOW)
+11. **Issue #131**: Connection pooling - Resource limits (LOW, defer until scale needed)
 
 ### GitHub Issue Cleanup History
+
+**2025/11/09 Issue #126 Completion** (Yahoo Finance API Rate Limiting):
+- ✅ **Issue #126 completed and merged** via PR #133
+- **Implemented**: Token Bucket rate limiting with Redis backend
+- **Key improvements**:
+  - Atomic Lua scripts preventing race conditions
+  - 20% performance improvement (removed double rate limiting)
+  - 12 comprehensive unit tests with 100% atomic behavior coverage
+- **Follow-up issues created**: #134 (config validation), #135 (metrics/monitoring)
+- **Issue fixes**: #4 and #57 title/content mismatches corrected
 
 **2025/11/09 Major Cleanup** (Second cleanup of the day):
 - ✅ **10 issues closed**: #5, #9, #26, #38, #53, #56, #60, #61, #69, #98, #101, #102, #127
@@ -639,9 +651,123 @@ python migrations/run_migrations.py upgrade  # Helper script
 
 **Implemented Tables**:
 - `companies` - Company master data
-- `financial_statements` - Financial reports  
+- `financial_statements` - Financial reports
 - `stock_prices` - Daily stock prices
 - `financial_indicators` - Calculated metrics
 
 See `backend/README.md` for detailed documentation.
+
+## Deployment Roadmap (GCP Infrastructure)
+
+### Strategy: Defer Until High-Priority Features Complete
+
+**Decision** (2025/11/09): Deployment infrastructure issues created but deferred until after high-priority features are implemented. This allows faster feature delivery and early user feedback before investing in production infrastructure.
+
+### Deployment Issues Created
+
+**Phase 1: Critical Infrastructure** (HIGH Priority - ~$23-33/month)
+- **#136**: Cloud SQL (PostgreSQL) setup - Database persistence ($7-9/month)
+- **#137**: Redis Memorystore setup - Cache, sessions, rate limiting ($6-12/month)
+- **#138**: Secret Manager setup - Secure credentials management ($0/month)
+- **#4**: Cloud Run environment - Backend API deployment ($8-10/month)
+
+**Phase 2: DevOps & Observability** (HIGH-MEDIUM Priority)
+- **#139**: CI/CD Pipeline (Cloud Build + GitHub Actions) - Automated deployment (~$0.50/month)
+- **#140**: Monitoring & Logging (Cloud Monitoring, Logging, Error Reporting) - Observability ($0-2/month)
+
+**Phase 3: Cost Optimization** (LOW Priority - Future)
+- **#141**: Cost optimization and monitoring - Budget alerts, resource optimization
+
+**Total Estimated Cost**: $23-34/month (within budget)
+
+### Deployment Timeline
+
+**Current Status**: ❌ No staging or production environments exist
+
+**Recommended Timeline**:
+```
+Now (2025/11/09)
+│
+├─ HIGH PRIORITY: Feature Development (Weeks 1-5)
+│  ├─ Week 1-2: Frontend real-time features (#123, #118)
+│  ├─ Week 3-5: Core frontend pages (#23, #24)
+│  └─ Week 6: Quality & compliance (#100, #90)
+│
+└─ FUTURE: Infrastructure Deployment (Weeks 6-8)
+   ├─ Week 6: Phase 1 - Critical infrastructure (#136-#138, #4)
+   ├─ Week 7: Phase 2 - DevOps (#139, #140)
+   └─ Week 8: Phase 3 - Optimization (#141)
+```
+
+**Rationale**:
+- 🚀 **Faster Time-to-Market**: Focus on features first, infrastructure later
+- 📊 **Data-Driven Decisions**: Gather user feedback before scaling
+- 💰 **Cost Efficiency**: Avoid infrastructure costs while building features
+- 🔄 **Iterative Approach**: Deploy when MVP is ready, not before
+
+### Infrastructure Stack (Terraform-managed)
+
+**Compute & Orchestration**:
+- Cloud Run (Backend API)
+- Cloud Scheduler (Batch jobs)
+- Cloud Build + GitHub Actions (CI/CD)
+
+**Data & Storage**:
+- Cloud SQL for PostgreSQL (db-f1-micro, 10GB HDD)
+- Redis Memorystore (Basic tier, 1GB)
+- Cloud Storage (Backups, static assets)
+
+**Security & Observability**:
+- Secret Manager (Credentials)
+- Cloud Logging (Logs, 50GB/month free tier)
+- Cloud Monitoring (Metrics, dashboards)
+- Error Reporting (Exception tracking)
+
+**Networking**:
+- VPC peering (Cloud SQL, Redis)
+- Cloud CDN (Frontend static assets - future)
+- Cloud Armor (DDoS protection - future)
+
+### Cost Breakdown (Target: $23-33/month)
+
+| Service | Monthly Cost | Configuration | Notes |
+|---------|-------------|---------------|-------|
+| Cloud Run | $8-10 | Min instances: 0, CPU allocation: request-only | Pay-per-use, scales to zero |
+| Cloud SQL | $7-9 | db-f1-micro, 10GB HDD, no HA | Upgradable to HA when needed |
+| Redis Memorystore | $6-12 | Basic tier, 1GB | Session, cache, rate limiting |
+| Cloud Storage | $1-2 | Lifecycle policies, Nearline for backups | Minimal usage initially |
+| Artifact Registry | ~$0.50 | ~5 Docker images | Container image storage |
+| Networking | ~$1 | Same region, minimize egress | Optimize data transfer |
+| Cloud Logging | $0 | Free tier (50GB/month) | Sufficient for initial scale |
+| Cloud Monitoring | $0 | Free tier | Metrics and dashboards |
+| Cloud Build | $0 | Free tier (120 min/day) | CI/CD automation |
+| **Total** | **$23-34/month** | | **Within budget** ✅ |
+
+### Risk Mitigation
+
+**Risks**:
+1. ❌ **No staging environment** - Test in production initially
+2. ❌ **No disaster recovery** - Single region deployment
+3. ❌ **No high availability** - Acceptable for MVP
+
+**Mitigations**:
+1. ✅ **Comprehensive testing** - 78% coverage, integration tests
+2. ✅ **Monitoring & alerting** - Quick detection of issues
+3. ✅ **Easy rollback** - Cloud Run revisions, Terraform state
+4. ✅ **Gradual rollout** - Canary deployments, feature flags (future)
+
+### Future Scaling Considerations
+
+**When to scale infrastructure** (Traffic/Revenue milestones):
+- **1,000 users**: Current setup sufficient
+- **10,000 users**: Add HA (Cloud SQL standby, Redis Standard tier) - ~$30-40/month additional
+- **100,000 users**: Multi-region, CDN, load balancing - ~$200-300/month
+- **1M+ users**: Kubernetes (GKE), Cloud Spanner, global distribution - ~$1000+/month
+
+### Reference Documentation
+
+- **Terraform Modules**: `infrastructure/terraform/` (to be created)
+- **Deployment Guide**: `infrastructure/README.md` (to be created)
+- **Runbook**: Cloud Run deployment, rollback, troubleshooting (to be created)
+- **Cost Monitoring**: Billing alerts, budget reports (Issue #141)
 
