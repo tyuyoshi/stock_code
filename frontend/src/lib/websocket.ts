@@ -17,16 +17,29 @@ export enum ConnectionState {
   RECONNECTING = "reconnecting",
 }
 
+export interface MarketStatus {
+  is_open: boolean;
+  is_trading_day: boolean;
+  current_time: string;
+  next_trading_day?: string;
+  last_trading_day?: string;
+  reason?: "weekend_or_holiday" | "outside_trading_hours";
+}
+
 export interface StockPrice {
   company_id: number;
   ticker_symbol: string;
   company_name: string;
-  current_price: number;
-  change: number;
-  change_percent: number;
+  current_price: number | null;  // Can be null if Yahoo Finance data unavailable
+  change: number | null;  // Can be null if previous close unavailable
+  change_percent: number | null;  // Can be null if previous close unavailable
   quantity?: number;
   purchase_price?: number;
   unrealized_pl?: number;
+  market_status?: MarketStatus;  // Market status information
+  date?: string;  // Date of the price data (YYYY-MM-DD)
+  tags?: string[];  // User-defined tags for categorization
+  memo?: string;  // User's personal note
 }
 
 export interface PriceUpdateMessage {
@@ -180,10 +193,21 @@ export class WebSocketClient {
    */
   private handleMessage(event: MessageEvent): void {
     try {
-      const message: PriceUpdateMessage = JSON.parse(event.data);
+      const message: any = JSON.parse(event.data);
 
       if (message.type === "price_update") {
-        this.options.onMessage(message);
+        console.log("[WebSocket] Price update received:", {
+          stockCount: message.stocks?.length || 0,
+          watchlistId: message.watchlist_id,
+          timestamp: message.timestamp
+        });
+        this.options.onMessage(message as PriceUpdateMessage);
+      } else if (message.type === "ping") {
+        // Respond with pong to keep connection alive
+        console.log("[WebSocket] Received ping, sending pong");
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ type: "pong" }));
+        }
       } else {
         console.warn("[WebSocket] Unknown message type:", message);
       }

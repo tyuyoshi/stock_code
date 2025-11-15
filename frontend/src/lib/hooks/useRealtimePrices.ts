@@ -22,6 +22,7 @@ import {
   StockPrice,
   PriceUpdateMessage,
 } from "../websocket";
+import { watchlistApi } from "../api/watchlist";
 
 export interface UseRealtimePricesResult {
   /** Current stock prices */
@@ -32,10 +33,14 @@ export interface UseRealtimePricesResult {
   error: Error | null;
   /** Last update timestamp */
   lastUpdate: string | null;
+  /** Loading state for initial data fetch */
+  isLoading: boolean;
   /** Connect to WebSocket */
   connect: () => void;
   /** Disconnect from WebSocket */
   disconnect: () => void;
+  /** Refresh data via REST API */
+  refresh: () => Promise<void>;
   /** Check if currently connected */
   isConnected: boolean;
 }
@@ -57,6 +62,7 @@ export function useRealtimePrices(
   );
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const clientRef = useRef<WebSocketClient | null>(null);
   const watchlistIdRef = useRef<number | null>(watchlistId);
@@ -70,6 +76,12 @@ export function useRealtimePrices(
    * Handle incoming price update messages
    */
   const handleMessage = useCallback((message: PriceUpdateMessage) => {
+    console.log('[useRealtimePrices] Price update received:', {
+      stocks: message.stocks.length,
+      timestamp: message.timestamp,
+      watchlistId: message.watchlist_id
+    });
+
     setStocks(message.stocks);
     setLastUpdate(message.timestamp);
     setError(null);
@@ -93,6 +105,142 @@ export function useRealtimePrices(
   const handleError = useCallback((err: Error) => {
     setError(err);
     console.error("[useRealtimePrices] Error:", err);
+  }, []);
+
+  /**
+   * Fetch initial watchlist data via REST API (includes price data)
+   */
+  const fetchInitialData = useCallback(async () => {
+    if (!watchlistIdRef.current) {
+      console.warn("[useRealtimePrices] Cannot fetch: watchlistId is null");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch watchlist structure
+      const watchlistDetail = await watchlistApi.getWatchlistDetail(
+        watchlistIdRef.current
+      );
+
+      // Fetch current prices for all stocks (same as refresh function)
+      const prices = await watchlistApi.getWatchlistPrices(
+        watchlistIdRef.current
+      );
+
+      // Merge watchlist items with price data
+      const initialStocks: StockPrice[] = watchlistDetail.items.map((item) => {
+        const priceData = prices[item.ticker_symbol];
+
+        return {
+          company_id: item.company_id,
+          ticker_symbol: item.ticker_symbol,
+          company_name: item.company_name,
+          current_price: priceData?.close_price ?? null,
+          change:
+            priceData?.close_price && priceData?.previous_close
+              ? priceData.close_price - priceData.previous_close
+              : null,
+          change_percent:
+            priceData?.close_price && priceData?.previous_close
+              ? ((priceData.close_price - priceData.previous_close) /
+                  priceData.previous_close) *
+                100
+              : null,
+          quantity: item.quantity,
+          purchase_price: item.purchase_price,
+          unrealized_pl:
+            priceData?.close_price &&
+            item.quantity &&
+            item.purchase_price
+              ? (priceData.close_price - item.purchase_price) * item.quantity
+              : undefined,
+          market_status: priceData?.market_status,
+          date: priceData?.date,
+          tags: item.tags,
+          memo: item.memo,
+        };
+      });
+
+      setStocks(initialStocks);
+      setLastUpdate(new Date().toISOString());
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      console.error("[useRealtimePrices] Failed to fetch initial data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Refresh data via REST API (manual refresh)
+   */
+  const refresh = useCallback(async () => {
+    if (!watchlistIdRef.current) {
+      console.warn("[useRealtimePrices] Cannot refresh: watchlistId is null");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch fresh watchlist structure (for new items)
+      const watchlistDetail = await watchlistApi.getWatchlistDetail(
+        watchlistIdRef.current
+      );
+
+      // Fetch current prices for all stocks
+      const prices = await watchlistApi.getWatchlistPrices(
+        watchlistIdRef.current
+      );
+
+      // Merge watchlist items with price data
+      const updatedStocks: StockPrice[] = watchlistDetail.items.map((item) => {
+        const priceData = prices[item.ticker_symbol];
+
+        return {
+          company_id: item.company_id,
+          ticker_symbol: item.ticker_symbol,
+          company_name: item.company_name,
+          current_price: priceData?.close_price ?? null,
+          change:
+            priceData?.close_price && priceData?.previous_close
+              ? priceData.close_price - priceData.previous_close
+              : null,
+          change_percent:
+            priceData?.close_price && priceData?.previous_close
+              ? ((priceData.close_price - priceData.previous_close) /
+                  priceData.previous_close) *
+                100
+              : null,
+          quantity: item.quantity,
+          purchase_price: item.purchase_price,
+          unrealized_pl:
+            priceData?.close_price &&
+            item.quantity &&
+            item.purchase_price
+              ? (priceData.close_price - item.purchase_price) * item.quantity
+              : undefined,
+          market_status: priceData?.market_status,
+          date: priceData?.date,
+          tags: item.tags,
+          memo: item.memo,
+        };
+      });
+
+      setStocks(updatedStocks);
+      setLastUpdate(new Date().toISOString());
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      console.error("[useRealtimePrices] Failed to refresh data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   /**
@@ -139,11 +287,20 @@ export function useRealtimePrices(
       clientRef.current = null;
     }
 
-    setStocks([]);
+    // Keep stocks data (fetched via REST API)
+    // Only update connection state
     setConnectionState(ConnectionState.DISCONNECTED);
     setError(null);
-    setLastUpdate(null);
   }, []);
+
+  /**
+   * Fetch initial data on mount or when watchlistId changes
+   */
+  useEffect(() => {
+    if (watchlistId) {
+      fetchInitialData();
+    }
+  }, [watchlistId, fetchInitialData]);
 
   /**
    * Auto-connect on mount if enabled
@@ -174,8 +331,10 @@ export function useRealtimePrices(
     connectionState,
     error,
     lastUpdate,
+    isLoading,
     connect,
     disconnect,
+    refresh,
     isConnected: connectionState === ConnectionState.CONNECTED,
   };
 }

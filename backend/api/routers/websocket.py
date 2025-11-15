@@ -1,7 +1,9 @@
 """WebSocket router for real-time stock price updates"""
 
 import asyncio
+import json
 import logging
+from datetime import datetime
 from typing import Optional, Dict, Any, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from core.dependencies import get_redis_client
 from models.watchlist import Watchlist, WatchlistItem
 from models.user import User
 from services.yahoo_finance_client import YahooFinanceClient
+from services.trading_calendar import trading_calendar
 from redis import Redis
 from core.sessions import get_session
 
@@ -139,8 +142,26 @@ class ConnectionManager:
                     # Always close DB session to prevent connection pool exhaustion
                     db.close()
 
-                # Wait 5 seconds before next update
-                await asyncio.sleep(5)
+                # Adaptive update interval based on environment and market hours
+                # Development: 10s (trading) / 30s (non-trading) for testing
+                # Production: 5min (trading) / 30min (non-trading) to reduce API calls
+                from core.config import settings
+
+                current_date = datetime.now().date()
+                is_trading_day = trading_calendar.is_trading_day(current_date)
+
+                if is_trading_day:
+                    update_interval = settings.websocket_update_interval_trading
+                    logger.info(
+                        f"Using {update_interval}s interval (trading day, {settings.environment} mode)"
+                    )
+                else:
+                    update_interval = settings.websocket_update_interval_non_trading
+                    logger.info(
+                        f"Using {update_interval}s interval (non-trading day, {settings.environment} mode)"
+                    )
+
+                await asyncio.sleep(update_interval)
 
         except asyncio.CancelledError:
             logger.info(f"Price update worker cancelled for watchlist {watchlist_id}")
@@ -171,6 +192,11 @@ class ConnectionManager:
                 return
 
             connections = list(self.active_connections[watchlist_id])
+
+        logger.info(
+            f"Broadcasting price update to {len(connections)} connections "
+            f"for watchlist {watchlist_id}"
+        )
 
         # Send to all connections (outside the lock to avoid blocking)
         disconnected = []
@@ -482,3 +508,167 @@ async def watchlist_price_stream(
             pass
     finally:
         await manager.disconnect(websocket, watchlist_id)
+
+
+async def fetch_single_stock_price(
+    ticker: str, yahoo_client: YahooFinanceClient, db: Session
+) -> Dict[str, Any]:
+    """Fetch current price for a single stock
+
+    Args:
+        ticker: Stock ticker symbol
+        yahoo_client: Yahoo Finance client
+        db: Database session
+
+    Returns:
+        Dictionary with price data
+    """
+    from models.company import Company
+    from datetime import datetime
+
+    # Get company data
+    company = db.query(Company).filter(Company.ticker_symbol == ticker).first()
+
+    if not company:
+        return {
+            "type": "price_update",
+            "ticker": ticker,
+            "company_id": None,
+            "company_name": None,
+            "current_price": None,
+            "change": None,
+            "change_percent": None,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    # Fetch price from Yahoo Finance
+    price_info = await yahoo_client.get_stock_price(ticker)
+
+    stock_data = {
+        "type": "price_update",
+        "ticker": ticker,
+        "company_id": company.id,
+        "company_name": company.company_name_jp or company.company_name_en,
+        "current_price": None,
+        "change": None,
+        "change_percent": None,
+    }
+
+    if price_info:
+        current_price = price_info.get("close_price")
+        previous_close = price_info.get("previous_close")
+
+        stock_data["current_price"] = current_price
+
+        if current_price and previous_close:
+            change = current_price - previous_close
+            change_percent = (change / previous_close) * 100
+            stock_data["change"] = round(change, 2)
+            stock_data["change_percent"] = round(change_percent, 2)
+
+    stock_data["timestamp"] = datetime.now().isoformat()
+    return stock_data
+
+
+@router.websocket("/stock/{ticker}/price")
+async def single_stock_price_stream(
+    websocket: WebSocket,
+    ticker: str,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis_client),
+):
+    """WebSocket endpoint for real-time single stock price updates
+
+    Optimized for viewing individual stock details with more frequent updates
+    than watchlist page. Uses the same authentication and rate limiting as
+    watchlist endpoint.
+
+    Authentication:
+        Requires a short-lived token obtained from GET /api/v1/auth/ws-token
+        Token should be passed as a query parameter: ?token=xxx
+        Tokens are valid for 60 seconds and can only be used once.
+
+    Message Format:
+        {
+            "type": "price_update",
+            "ticker": "7203",
+            "company_id": 1,
+            "company_name": "Toyota Motor Corp",
+            "current_price": 2500.0,
+            "change": 50.0,
+            "change_percent": 2.04,
+            "timestamp": "2025-11-09T12:00:00"
+        }
+    """
+    # Accept the connection first (required by FastAPI)
+    await websocket.accept()
+
+    # Authenticate user
+    user = await get_websocket_user(websocket, db=db, redis_client=redis_client)
+    if not user:
+        return  # Connection already closed with appropriate reason
+
+    # Initialize Yahoo Finance client
+    yahoo_client = YahooFinanceClient(redis_client=redis_client)
+
+    # Fetch initial price data
+    try:
+        initial_data = await fetch_single_stock_price(ticker, yahoo_client, db)
+    except Exception as e:
+        logger.error(f"Error fetching initial price for {ticker}: {e}")
+        await websocket.close(
+            code=status.WS_1011_INTERNAL_ERROR, reason="Failed to fetch initial data"
+        )
+        return
+
+    # Send initial data immediately
+    try:
+        await websocket.send_json(initial_data)
+        logger.info(f"WebSocket connected for stock {ticker}")
+    except Exception as e:
+        logger.error(f"Error sending initial data for {ticker}: {e}")
+        return
+
+    try:
+        # Keep connection alive and send periodic updates
+        while True:
+            try:
+                # Wait for client messages with timeout
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                logger.debug(f"Received message from client: {data}")
+
+                # Handle ping/pong
+                try:
+                    message = json.loads(data)
+                    if message.get("type") == "pong":
+                        logger.debug(f"Received pong from client for {ticker}")
+                except json.JSONDecodeError:
+                    pass
+
+            except asyncio.TimeoutError:
+                # Fetch and send updated price
+                try:
+                    # Create fresh DB session for this iteration
+                    price_data = await fetch_single_stock_price(ticker, yahoo_client, db)
+                    await websocket.send_json(price_data)
+                    logger.debug(f"Sent price update for {ticker}")
+                except Exception as e:
+                    logger.error(f"Error fetching/sending price for {ticker}: {e}")
+
+                # Send ping to keep connection alive
+                try:
+                    await websocket.send_json({"type": "ping"})
+                except Exception:
+                    # Connection lost
+                    break
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for stock {ticker}")
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection for stock {ticker}: {e}")
+        try:
+            await websocket.close(
+                code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error"
+            )
+        except Exception:
+            pass

@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     session_cookie_httponly: bool = True
     session_cookie_secure: bool = False
     session_cookie_samesite: str = "lax"
-    session_cookie_domain: Optional[str] = "localhost"  # localhost for dev, None for production
+    session_cookie_domain: Optional[str] = None  # None allows cookies across localhost ports
     session_cookie_path: str = "/"
     
     # Frontend URL
@@ -77,6 +77,55 @@ class Settings(BaseSettings):
     yahoo_finance_max_tokens: int = 100
     yahoo_finance_refill_rate: float = 0.5  # tokens/second (30/min, 1800/hour)
     yahoo_finance_rate_limit_key: str = "rate_limit:yahoo_api"
+
+    # Yahoo Finance Caching (to reduce API calls)
+    # Development: 24-hour cache to minimize API calls
+    # Production: 10-min/1-hour cache for real-time data
+    _yahoo_finance_cache_ttl: Optional[int] = None
+    _yahoo_finance_cache_ttl_after_hours: Optional[int] = None
+
+    @property
+    def yahoo_finance_cache_ttl(self) -> int:
+        """Adaptive cache TTL based on environment"""
+        if self._yahoo_finance_cache_ttl is not None:
+            return self._yahoo_finance_cache_ttl
+
+        # Development: 24-hour cache (minimal API calls)
+        if self.environment == "development":
+            return 86400  # 24 hours
+
+        # Production: 10-minute cache
+        return 600
+
+    @property
+    def yahoo_finance_cache_ttl_after_hours(self) -> int:
+        """After-hours cache TTL based on environment"""
+        if self._yahoo_finance_cache_ttl_after_hours is not None:
+            return self._yahoo_finance_cache_ttl_after_hours
+
+        # Development: 24-hour cache
+        if self.environment == "development":
+            return 86400  # 24 hours
+
+        # Production: 1-hour cache
+        return 3600
+
+    # Development fixture mode
+    use_fixtures_in_dev: bool = False
+
+    @property
+    def websocket_update_interval_trading(self) -> int:
+        """WebSocket price update interval for trading days (seconds)"""
+        if self.environment == "development":
+            return 10  # 10 seconds in development
+        return 300  # 5 minutes in production
+
+    @property
+    def websocket_update_interval_non_trading(self) -> int:
+        """WebSocket price update interval for non-trading days (seconds)"""
+        if self.environment == "development":
+            return 30  # 30 seconds in development
+        return 1800  # 30 minutes in production
 
     @field_validator('cors_origins', mode='before')
     @classmethod

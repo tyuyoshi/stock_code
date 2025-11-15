@@ -314,9 +314,9 @@ gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items
 gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
 ```
 
-### Issue Status (as of 2025/11/09 - Issue #125 Completed)
+### Issue Status (as of 2025/11/16 - PR #142 Frontend WebSocket Client Complete)
 
-- **Total Issues**: 132 total
+- **Total Issues**: 152 total (5 new issues created)
 - **Closed**: 45 issues (comprehensive cleanup completed)
   - **Recently Closed** (2025/11/09 cleanup):
     - #5 (Cloud Scheduler - completed in #85)
@@ -329,12 +329,14 @@ gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open
     - #101 (Export history - merged into #100)
     - #102 (Email tests - fixed in PR #105)
     - #127 (Rate limiting - duplicate of #126)
-  - **Major Completions** (2025/11/09):
+  - **Major Completions** (2025/11/09-11/16):
     - #22: Next.js 14 App Router (PR #110 - Frontend foundation)
     - #34: Google OAuth 2.0 (PR #105 - Authentication system)
     - #50: Watchlist management (PR #121 - Portfolio tracking)
     - #117: WebSocket real-time (PR #122 - Live price streaming)
     - #125: WebSocket memory leak (PR #132 - Centralized broadcasting)
+    - #126: Yahoo Finance rate limiting (PR #133 - Token bucket algorithm)
+    - #123: Frontend WebSocket client (PR #142 - Real-time UI integration) ✅ **JUST COMPLETED**
   - **Previous completions**: #2, #6, #8, #13, #16-22, #27, #30, #32-37, #50, #59, #63-66, #74, #80-83, #85, #88, #109
 - **Open**: 86 issues (1 more closed from 87)
 - **High Priority** (15 issues - accurately prioritized):
@@ -406,6 +408,85 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 - ✅ No breaking changes detected
 
 **Supersedes**: PR #108 (Dependabot PR, closed)
+
+### PR #142: Frontend WebSocket Client Implementation
+**Status**: ✅ **Complete** - 2025/11/16 (Issue #123)
+
+**Summary**: Complete WebSocket client implementation for real-time stock price updates in the frontend, with automatic reconnection, environment-aware update intervals, and comprehensive performance optimization.
+
+**Key Components Implemented**:
+1. **WebSocket Client** (`frontend/src/lib/websocket.ts`)
+   - Automatic reconnection with exponential backoff (3s, 6s, 12s, 24s, 48s)
+   - Connection state management (CONNECTING, CONNECTED, RECONNECTING, DISCONNECTED, ERROR)
+   - Token-based authentication via `/api/v1/auth/ws-token` endpoint
+   - Ping/pong heartbeat handling
+   - Memory leak prevention through proper cleanup
+
+2. **useRealtimePrices Hook** (`frontend/src/lib/hooks/useRealtimePrices.ts`)
+   - React Hook for component integration
+   - Initial data fetch via REST API
+   - Real-time updates via WebSocket
+   - Manual refresh functionality
+   - Auto-connect on mount option
+   - Proper cleanup on unmount
+
+3. **WatchlistTable Component** (`frontend/src/components/watchlist/WatchlistTable.tsx`)
+   - Real-time price updates with visual feedback
+   - Connection status indicator (5 states with icons/colors)
+   - Performance optimizations (React.memo, useCallback, useMemo)
+   - Price change animations (green ↑ / red ↓)
+   - Responsive design integration
+
+**Backend Updates** (`backend/api/routers/websocket.py`, `backend/core/config.py`):
+- Environment-aware update intervals:
+  - **Development**: 10s (trading days), 30s (non-trading days)
+  - **Production**: 5min (trading days), 30min (non-trading days)
+- Console logging for price updates visibility
+- Configuration properties for interval management
+
+**Documentation**:
+- ✅ Consolidated `WEBSOCKET_TESTING.md` into `frontend/README.md` (520+ lines)
+- ✅ 10 comprehensive test cases (TC-01 to TC-10)
+- ✅ Performance benchmarks and measurement tools
+- ✅ Fixed incorrect API endpoints (`/items` → `/stocks`)
+
+**Testing Completed**:
+- TC-01: Initial connection ✅
+- TC-02: Real-time price updates ✅
+- TC-03: Connection interruption & reconnection ✅
+- TC-04: Manual disconnection ✅
+- TC-05: Performance & memory leaks ✅
+- TC-06: Multiple concurrent connections ✅
+- TC-07-10: Various edge cases ✅
+
+**Related Issues Created**:
+- #144: ウォッチリスト銘柄のCRUD操作UI実装
+- #145: 銘柄メモのモーダル表示と編集機能
+- #146: 複数ウォッチリストの管理UI実装
+- #147: ウォッチリスト画面のレスポンシブデザイン検証と修正
+- #148: 有料プラン・Stripe決済システムの実装 (NEW - 2025/11/16)
+- #149: 初期企業データ1000社のDB投入 (NEW - 2025/11/16)
+- #150: 企業検索ページの実装 (NEW - 2025/11/16)
+- #151: 全画面レスポンシブデザインの包括的実装 (NEW - 2025/11/16)
+- #152: 企業詳細ページ（株価情報セクション）の拡張 (NEW - 2025/11/16)
+
+**Performance Optimizations**:
+- React.memo for component memoization
+- useCallback for callback stability
+- useMemo for expensive calculations
+- Proper WebSocket cleanup preventing memory leaks
+- Environment-based update intervals to reduce API calls in development
+
+**Files Modified**:
+- `frontend/src/lib/websocket.ts` - Core WebSocket client with reconnection logic
+- `frontend/src/lib/hooks/useRealtimePrices.ts` - React Hook integration
+- `frontend/src/components/watchlist/WatchlistTable.tsx` - UI component
+- `backend/api/routers/websocket.py` - Environment-aware intervals
+- `backend/core/config.py` - WebSocket configuration properties
+- `frontend/README.md` - Consolidated comprehensive testing guide
+
+**Deleted Files**:
+- `frontend/WEBSOCKET_TESTING.md` - Consolidated into README.md per "One Directory, One README.md Rule"
 
 ## Known Issues and TODOs
 
