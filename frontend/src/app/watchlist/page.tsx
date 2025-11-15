@@ -20,17 +20,16 @@ export default function WatchlistPage() {
     isLoading: watchlistsLoading,
     error: watchlistsError,
     createDefaultWatchlist,
-  } = useWatchlists(!user); // Only auto-fetch if user is logged in
+  } = useWatchlists(!!user); // Auto-fetch watchlists when user is logged in
   const [watchlistId, setWatchlistId] = useState<number | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [creationError, setCreationError] = useState<string | null>(null);
 
   /**
-   * Initialize watchlist for the user
-   * - If user has watchlists, use the first one
-   * - If user has no watchlists, create a default one
+   * Select the first watchlist when user logs in and watchlists are loaded
    */
   useEffect(() => {
-    if (!user || watchlistsLoading || isInitializing) {
+    if (!user || watchlistsLoading) {
       return;
     }
 
@@ -42,29 +41,35 @@ export default function WatchlistPage() {
     // If user has watchlists, use the first one
     if (watchlists.length > 0) {
       setWatchlistId(watchlists[0].id);
-      return;
     }
+    // If user has no watchlists, we'll show a "create" button
+    // Don't auto-create to avoid 403 errors due to plan limits
+  }, [user, watchlists, watchlistsLoading, watchlistId]);
 
-    // If user has no watchlists, create a default one
-    setIsInitializing(true);
-    createDefaultWatchlist()
-      .then((newWatchlist) => {
-        setWatchlistId(newWatchlist.id);
-      })
-      .catch((error) => {
-        console.error("[WatchlistPage] Failed to create default watchlist:", error);
-      })
-      .finally(() => {
-        setIsInitializing(false);
-      });
-  }, [
-    user,
-    watchlists,
-    watchlistsLoading,
-    watchlistId,
-    isInitializing,
-    createDefaultWatchlist,
-  ]);
+  /**
+   * Handle watchlist creation
+   */
+  const handleCreateWatchlist = async () => {
+    setIsCreating(true);
+    setCreationError(null);
+
+    try {
+      const newWatchlist = await createDefaultWatchlist();
+      setWatchlistId(newWatchlist.id);
+    } catch (error: any) {
+      console.error("[WatchlistPage] Failed to create watchlist:", error);
+
+      if (error.response?.status === 429) {
+        setCreationError("リクエストが多すぎます。しばらくしてからもう一度お試しください。");
+      } else if (error.response?.status === 403) {
+        setCreationError("プランの上限に達しました。既存のウォッチリストをご利用ください。");
+      } else {
+        setCreationError("ウォッチリストの作成に失敗しました。もう一度お試しください。");
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   // Show loading state while checking authentication
   if (authLoading) {
@@ -99,17 +104,70 @@ export default function WatchlistPage() {
     );
   }
 
-  // Show loading state while initializing watchlist
-  if (watchlistsLoading || isInitializing || watchlistId === null) {
+  // Show loading state while fetching watchlists
+  if (watchlistsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
-          <p className="mt-4 text-gray-600">
-            {isInitializing
-              ? "ウォッチリストを作成中..."
-              : "ウォッチリストを読み込み中..."}
-          </p>
+          <p className="mt-4 text-gray-600">ウォッチリストを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show "Create Watchlist" UI if user has no watchlists
+  if (!watchlistsLoading && watchlists.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center max-w-md">
+          {creationError ? (
+            <>
+              <h1 className="text-2xl font-bold text-red-600">エラー</h1>
+              <p className="mt-2 text-gray-600">{creationError}</p>
+              <button
+                onClick={() => setCreationError(null)}
+                className="mt-4 rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700 transition-colors"
+              >
+                戻る
+              </button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                ウォッチリストがありません
+              </h1>
+              <p className="text-gray-600 mb-6">
+                最初のウォッチリストを作成して、銘柄の株価をモニタリングしましょう
+              </p>
+              <button
+                onClick={handleCreateWatchlist}
+                disabled={isCreating}
+                className="rounded-md bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isCreating ? (
+                  <span className="flex items-center">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    作成中...
+                  </span>
+                ) : (
+                  "ウォッチリストを作成"
+                )}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while watchlistId is being set
+  if (watchlistId === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
+          <p className="mt-4 text-gray-600">初期化中...</p>
         </div>
       </div>
     );
@@ -176,19 +234,19 @@ export default function WatchlistPage() {
           </div>
         )}
 
-        {/* Watchlist table with real-time updates */}
-        <WatchlistTable watchlistId={watchlistId} autoConnect={true} />
+        {/* Watchlist table with manual refresh */}
+        <WatchlistTable watchlistId={watchlistId} autoConnect={false} />
 
         {/* Info section */}
         <div className="mt-8 rounded-lg bg-blue-50 p-4">
           <h3 className="font-semibold text-blue-900">
-            💡 リアルタイム更新について
+            💡 ウォッチリストの使い方
           </h3>
           <ul className="mt-2 space-y-1 text-sm text-blue-800">
-            <li>• 株価は5秒ごとに自動更新されます</li>
-            <li>• 接続が切れた場合は自動的に再接続を試みます</li>
-            <li>• 価格の変動は色分けして表示されます（緑: 上昇、赤: 下落）</li>
-            <li>• 評価損益はリアルタイムで計算・表示されます</li>
+            <li>• 右上の「更新」ボタンで最新の株価を取得できます</li>
+            <li>• 銘柄をクリックすると詳細画面に移動します</li>
+            <li>• 詳細画面では、選択した銘柄の株価がリアルタイムで更新されます</li>
+            <li>• 評価損益は最新の株価に基づいて自動計算されます</li>
           </ul>
         </div>
       </div>

@@ -90,6 +90,7 @@ export function useWatchlists(
 
   /**
    * Create default watchlist for new users
+   * Memoized to prevent infinite loops in useEffect dependencies
    */
   const createDefaultWatchlist = useCallback(async (): Promise<Watchlist> => {
     try {
@@ -105,7 +106,7 @@ export function useWatchlists(
       );
       throw error;
     }
-  }, []);
+  }, []); // Empty deps = stable reference
 
   /**
    * Auto-fetch on mount if enabled

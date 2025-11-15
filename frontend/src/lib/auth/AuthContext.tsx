@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
 
 export interface User {
@@ -28,7 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUser = async () => {
+  // Memoize fetchUser to prevent infinite loops
+  const fetchUser = useCallback(async () => {
     console.log("[AuthContext] Fetching user...");
     try {
       const response = await apiClient.get<User>("/api/v1/auth/me");
@@ -41,11 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       console.log("[AuthContext] Loading complete");
     }
-  };
+  }, []); // No dependencies - stable function reference
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
 
   const login = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google/login`;
@@ -61,9 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const refreshUser = async () => {
+  // Memoize refreshUser to prevent infinite loops in callback page
+  const refreshUser = useCallback(async () => {
     await fetchUser();
-  };
+  }, [fetchUser]);
 
   return (
     <AuthContext.Provider

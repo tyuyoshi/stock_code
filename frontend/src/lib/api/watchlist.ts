@@ -36,6 +36,18 @@ export const watchlistApi = {
   },
 
   /**
+   * Get current prices for all stocks in a watchlist
+   */
+  getWatchlistPrices: async (
+    id: number
+  ): Promise<Record<string, any | null>> => {
+    const response = await apiClient.get<Record<string, any | null>>(
+      `/api/v1/watchlists/${id}/prices`
+    );
+    return response.data;
+  },
+
+  /**
    * Create a new watchlist
    */
   createWatchlist: async (

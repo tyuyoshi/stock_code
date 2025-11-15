@@ -65,5 +65,15 @@ class WatchlistItem(Base):
     watchlist = relationship("Watchlist", back_populates="items")
     company = relationship("Company")
 
+    @property
+    def ticker_symbol(self) -> str:
+        """Get ticker symbol from company relationship"""
+        return self.company.ticker_symbol if self.company else ""
+
+    @property
+    def company_name(self) -> str:
+        """Get company name from company relationship"""
+        return self.company.company_name_jp if self.company else ""
+
     def __repr__(self):
         return f"<WatchlistItem(id={self.id}, watchlist_id={self.watchlist_id}, company_id={self.company_id})>"
