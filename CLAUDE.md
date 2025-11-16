@@ -89,158 +89,84 @@ stock_code/
 ### Setup
 ```bash
 ./setup.sh              # Run initial setup
-
-# 環境変数の設定（重要）
-# ⚠️ よくある間違い: backend/.env.example は存在しません
-# 正しい手順: ルートの .env.example を backend/.env にコピー
-cd /Users/tsuyoshi-hasegawa/Documents/workspace/github/private/stock_code
-cp .env.example backend/.env
+cp .env.example backend/.env  # Copy environment variables (IMPORTANT!)
 ```
 
 ### Development
 
-**IMPORTANT**: Always use virtual environment for Python development to keep the local environment clean.
+**IMPORTANT**: Always use virtual environment for Python development.
 
 ```bash
-# With Docker
+# Docker
 docker compose up       # Start all services
 docker compose logs -f  # View logs
 
-# Backend (without Docker) - ALWAYS USE VIRTUAL ENVIRONMENT
-cd backend
-source venv/bin/activate  # Activate virtual environment first!
-# All Python commands must be run inside venv:
-(venv) $ alembic init alembic  # Alembic initialization (first time only)
+# Backend - ALWAYS IN VIRTUAL ENVIRONMENT
+cd backend && source venv/bin/activate
 (venv) $ alembic upgrade head   # Database migrations
 (venv) $ uvicorn api.main:app --reload  # Run server
-(venv) $ pip install <package>  # Install packages
-(venv) $ pytest                 # Run tests
+(venv) $ pytest                 # Run tests (78% coverage)
 
-# Frontend (without Docker)
-cd frontend
-npm run dev
+# Frontend
+cd frontend && npm run dev
 ```
 
 ### Testing & Quality
 ```bash
-# Backend - ALWAYS IN VIRTUAL ENVIRONMENT
-cd backend
-source venv/bin/activate
-(venv) $ pytest                  # Run tests (78% coverage achieved)
-(venv) $ ./run_tests.sh          # Run tests with Docker database
-(venv) $ black .                 # Format code
-(venv) $ flake8                  # Lint code
-(venv) $ mypy .                  # Type checking
+# Backend (in venv)
+pytest                  # Run tests
+./run_tests.sh          # Tests with Docker DB
+black . && flake8       # Format & lint
+mypy .                  # Type checking
 
 # Frontend
-cd frontend
 npm run lint            # ESLint
-npm run type-check      # TypeScript check
+npm run type-check      # TypeScript
 npm run build           # Production build
 ```
 
-## Key Features Implemented
+## Key Features Status
 
-1. **Data Collection**: 
-   - ✅ **EDINET API integration** - Japanese financial reports (Issue #6)
-   - ✅ **XBRL Parser** - Financial data extraction from EDINET (Issue #6)
-   - ✅ **Yahoo Finance integration** - Real-time & historical stock prices (Issue #8, PR #75)
-2. **Data Processing**: 
-   - ✅ **Basic financial indicators** - ROE, equity ratio, operating margin (Issue #6)
-   - ✅ **Advanced financial indicator calculations** - 60+ indicators across 6 categories (Issue #13)
-3. **API Endpoints**: 
-   - ✅ **Stock Price APIs** - Latest, historical, chart data endpoints (PR #75)
-   - 🔄 Company search, screening, comparison, data export (planned)
-7. **Testing Infrastructure** (Completed - 2025/11/01):
-   - ✅ **Comprehensive test suite** - 91 tests with 78% coverage (Issue #32)
-   - ✅ **Optimized CI/CD pipeline** - 60-80% GitHub Actions credit savings (PR #58)
-   - 🔄 **Test Coverage Monitoring** - Future improvements (Issues #59-61)
-4. **Frontend** (Next.js Setup Completed - 2025/11/09):
-   - ✅ **Next.js 14 App Router Setup** - Project foundation with TypeScript & Tailwind (Issue #22, PR #110 - Merged 2025/11/09)
-     - Complete App Router structure (app/, components/, lib/)
-     - Google OAuth integration (AuthContext, protected routes)
-     - API client with axios interceptors and error handling
-     - Responsive landing page with features section
-     - Toast notification system (Radix UI)
-     - ESLint, Prettier, TypeScript strict mode configured
-     - Docker development environment ready
-     - Production-ready security (HTTPOnly cookies, SameSite, CSRF protection)
-   - 🔄 **Company Details Page** - Financial data visualization (Issue #23) - Ready to start
-   - 🔄 **Screening Interface** - Advanced filtering UI (Issue #24) - Ready to start
-   - 🔄 **Chart Visualization** - Interactive stock price charts (Issue #25) - Ready to start
-   - 🔄 **Frontend Test Coverage** - Jest, RTL, E2E tests (Issue #111)
-   - 🔄 **Error Boundaries** - Graceful error handling (Issue #112)
-   - 🔄 **Performance Monitoring** - Web Vitals, analytics (Issue #113)
-   - 🔄 **Code Splitting** - Bundle optimization (Issue #114)
-   - 🔄 **CSP Headers** - Content Security Policy (Issue #115)
-   - 🔄 **Storybook** - Component documentation (Issue #116)
-5. **Batch Jobs**: 
-   - ✅ **Daily stock price updates** - Automated Yahoo Finance data collection (PR #75)
-   - 🔄 Quarterly financial data updates (planned)
-6. **User Features** (Google OAuth Completed - 2025/11/09):
-   - ✅ **Google OAuth Authentication** - Complete OAuth 2.0 flow with Redis sessions (Issue #34, PR #105 - Merged 2025/11/09)
-     - Complete authentication system with CSRF protection (OAuth state parameter)
-     - 5 auth endpoints: login, callback, me, profile, logout
-     - Redis session management with 7-day TTL, HTTPOnly cookies
-     - Role-based access control (free/premium/enterprise)
-     - 19 comprehensive tests (17 passing)
-     - Race condition handling for concurrent user creation
-     - Production-ready security (rate limiting, error sanitization, transaction safety)
-   - ✅ **Watchlist Management** - Complete portfolio tracking (Issue #50, PR #121 - Merged 2025/11/09)
-     - 7 API endpoints: CRUD operations for watchlists and items
-     - Plan-based limitations (Free: 1 list/20 stocks, Premium: 10/100, Enterprise: unlimited)
-     - Portfolio tracking: quantity, purchase_price, tags, memo
-     - 16 comprehensive tests (97% coverage)
-     - Complete user authorization and data isolation
-     - N+1 query prevention with eager loading
-   - ✅ **WebSocket Real-time Price Updates** - Live stock price streaming (Issue #117, PR #122 - 2025/11/09)
-     - WebSocket endpoint for real-time price updates (5-second interval)
-     - ConnectionManager for multiple client handling
-     - Session-based authentication and access control
-     - Yahoo Finance integration with P&L calculation
-     - 16 comprehensive tests (ConnectionManager, auth, price fetching)
-     - Developer tools: CLI test tool, setup/cleanup scripts
-     - Complete documentation (455-line testing guide)
-   - ✅ **WebSocket Performance Optimization** - Centralized broadcasting (Issue #125, PR #132 - Merged 2025/11/09)
-     - Single background task per watchlist (not per connection)
-     - 90% reduction in API calls and memory usage
-     - Fresh DB session per iteration (prevents connection pool exhaustion)
-     - Proper asyncio.Task lifecycle management
-     - Memory leak eliminated through centralized price updates
-     - 19 tests passing with updated architecture
-   - ✅ **Yahoo Finance API Rate Limiting** - Token Bucket algorithm (Issue #126, PR #133 - Merged 2025/11/09)
-     - Token Bucket rate limiting with Redis backend (100 tokens, 0.5/sec refill)
-     - Atomic Lua scripts preventing race conditions in distributed systems
-     - Integrated into 5 Yahoo Finance API methods
-     - 429 error and IP blocking prevention
-     - 12 comprehensive unit tests with atomic behavior verification
-     - 20% performance improvement (removed double rate limiting)
-     - Production-ready with graceful degradation (legacy fallback without Redis)
-   - 🔄 **Frontend WebSocket Client** - React/Next.js real-time UI (Issue #123) - Ready to start
-   - 🔄 **WebSocket Monitoring** - Metrics and performance optimization (Issue #124) - Ready to start
-   - 🔄 **Alert Notifications** - Price & event alerts (Issue #51) - Unblocked by Issue #34
-   - 🔄 **User Analytics** - Behavior tracking & recommendations (Issue #52) - Unblocked by Issue #34
-   - 🔄 **Analyst Coverage** - Rating & coverage info (Issue #49)
-   - 🔄 **GA4 Integration** - Marketing analytics (Issue #53)
+### Completed ✅
+1. **Data Collection**: EDINET API integration, XBRL Parser, Yahoo Finance integration (Issues #6, #8)
+2. **Data Processing**: 60+ financial indicators calculation engine (Issue #13)
+3. **API Endpoints**: 22 core APIs (company, screening, comparison, export) (Issue #35)
+4. **Testing**: 91 tests, 78% coverage, optimized CI/CD (Issue #32)
+5. **Frontend Foundation**: Next.js 14 App Router, Google OAuth, API client (Issue #22, PR #110)
+6. **User Authentication**: Google OAuth 2.0 with Redis sessions, RBAC (Issue #34, PR #105)
+7. **Watchlist Management**: Portfolio tracking with plan-based limits (Issue #50, PR #121)
+8. **WebSocket Real-time**: Live stock price streaming with centralized broadcasting (Issues #117, #125)
+9. **Rate Limiting**: Token Bucket algorithm for Yahoo Finance API (Issue #126, PR #133)
+10. **Frontend WebSocket Client**: Real-time UI with auto-reconnection (Issue #123, PR #142)
+11. **Batch Jobs**: Daily stock price auto-update with scheduler (Issue #85)
+12. **Performance**: Database index optimization, 50% query improvement (Issue #88)
+
+### In Progress 🔄
+- **Issue #23**: Company Details Page - Ready to start (frontend foundation complete)
+- **Issue #24**: Screening Interface - Ready to start (backend APIs available)
+- **Issue #90**: Test coverage expansion to 90%+ (HIGH PRIORITY)
+- **Issue #100**: Audit logging for exports (HIGH PRIORITY)
+
+### Planned 📋
+- Chart visualization (Issue #25)
+- Alert notifications (Issue #51)
+- User analytics (Issue #52)
+- Portfolio analysis API (Issue #118)
+- Frontend testing suite (Issue #111)
 
 ## Development Guidelines
 
-### Documentation Policy (IMPORTANT)
+### Documentation Policy
 
-**One Directory, One README.md Rule**: 
-- Each directory should have only ONE README.md file
-- Do NOT create multiple markdown files (e.g., MIGRATION.md, TESTING.md, API.md)
-- All documentation for a directory should be consolidated in its README.md
-- Example structure:
-  - `/README.md` - Project overview
-  - `/backend/README.md` - All backend docs (setup, migration, testing, API)
-  - `/frontend/README.md` - All frontend docs
-- Exception: CLAUDE.md (this file) for Claude Code guidance only
+**One Directory, One README.md Rule**:
+- Each directory has only ONE README.md file
+- Do NOT create multiple markdown files (MIGRATION.md, TESTING.md, etc.)
+- Exception: CLAUDE.md (this file) for Claude Code guidance
 
 ### When Adding New Features
 
 1. **API Endpoints**: Add to `backend/api/routers/`, follow REST conventions
-2. **Database Models**: Define in `backend/models/`, run migrations with Alembic
+2. **Database Models**: Define in `backend/models/`, run Alembic migrations
 3. **Frontend Pages**: Use Next.js App Router in `frontend/src/app/`
 4. **Data Processing**: Add to `backend/services/data_processor.py`
 5. **External APIs**: Implement clients in `backend/services/`
@@ -251,110 +177,66 @@ npm run build           # Production build
 2. **Type Safety**: Use TypeScript in frontend, type hints in Python
 3. **Error Handling**: Implement proper error handling and logging
 4. **Testing**: Write tests for critical business logic
-5. **Documentation**: Update API.md for new endpoints
-
-### Security Considerations
-
-- API keys stored in environment variables
-- Google OAuth 2.0 authentication implemented (Issue #34)
-- Redis-based session management with secure cookies
-- Rate limiting configured
-- SQL injection prevention via SQLAlchemy ORM
-- CORS properly configured
-- HTTPOnly cookies for XSS protection
-- Role-based access control (free/premium/enterprise)
 
 ## GitHub Integration
 
 - **Repository**: https://github.com/tyuyoshi/stock_code
-- **Issues**: 41 total issues (36 active after duplicate removal)
 - **Project Board**: https://github.com/users/tyuyoshi/projects/5
+- **Total Issues**: 152 (86 open, 66 closed)
 
 ### Issue Management Guidelines
 
-**CRITICAL RULE**: All new issues MUST be added to the GitHub Project board immediately after creation.
-
-#### Required Steps When Creating an Issue
+**CRITICAL RULE**: All new issues MUST be added to Project board #5 immediately after creation.
 
 ```bash
-# Step 1: Create the issue
+# Create issue and add to project
 gh issue create --repo tyuyoshi/stock_code --title "..." --body "..."
-
-# Step 2: Get the issue number (latest created issue)
-ISSUE_NUM=$(gh issue list --repo tyuyoshi/stock_code --limit 1 --json number --jq '.[0].number')
-
-# Step 3: Add to Project board #5 (REQUIRED!)
+ISSUE_NUM=$(gh issue list --limit 1 --json number --jq '.[0].number')
 gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/$ISSUE_NUM
-
-# Or manually with known issue number:
-gh project item-add 5 --owner tyuyoshi --url https://github.com/tyuyoshi/stock_code/issues/{NUMBER}
 ```
 
-#### GitHub CLI Setup (One-time)
-
-If you encounter permission errors, refresh authentication with required scopes:
-
+**GitHub CLI Setup** (one-time):
 ```bash
-# For reading project data
 gh auth refresh -s read:project
-
-# For adding items to project board (REQUIRED for issue creation)
 gh auth refresh -s project
 ```
 
-#### Verification
+### GitHub Workflow Rules (Cost Optimization) ⚠️
 
-Check that all open issues are in the project:
+**IMPORTANT**: Minimize GitHub Actions costs by following these rules:
 
-```bash
-# List issues in project board
-gh project item-list 5 --owner tyuyoshi --format json --limit 1000 | jq '[.items[].content.number] | sort'
+1. **Always Create PRs as Draft**
+   ```bash
+   gh pr create --draft --title "..." --body "..."  # CORRECT
+   ```
 
-# List all open issues
-gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open --jq '[.[].number] | sort'
-```
+2. **User Confirms Before "Ready for Review"**
+   - Keep PR as Draft until user explicitly approves
+   - User tests locally first
+   ```bash
+   gh pr ready  # After user approval
+   ```
 
-### Issue Status (as of 2025/11/16 - PR #142 Frontend WebSocket Client Complete)
+3. **Keep Commits Local Until User Says "Push"**
+   ```bash
+   git add . && git commit -m "..."
+   # WAIT for user to say "push して"
+   git push origin <branch>  # After approval
+   ```
 
-- **Total Issues**: 152 total (5 new issues created)
-- **Closed**: 45 issues (comprehensive cleanup completed)
-  - **Recently Closed** (2025/11/09 cleanup):
-    - #5 (Cloud Scheduler - completed in #85)
-    - #9 (Daily batch job - completed in #85)
-    - #26 (Responsive design - completed in PR #110)
-    - #38 (Frontend bundle - merged into #113)
-    - #53 (GA4 integration - merged into #111)
-    - #56, #60, #61, #69 (Testing - merged into #90)
-    - #98 (Code quality - ongoing maintenance)
-    - #101 (Export history - merged into #100)
-    - #102 (Email tests - fixed in PR #105)
-    - #127 (Rate limiting - duplicate of #126)
-  - **Major Completions** (2025/11/09-11/16):
-    - #22: Next.js 14 App Router (PR #110 - Frontend foundation)
-    - #34: Google OAuth 2.0 (PR #105 - Authentication system)
-    - #50: Watchlist management (PR #121 - Portfolio tracking)
-    - #117: WebSocket real-time (PR #122 - Live price streaming)
-    - #125: WebSocket memory leak (PR #132 - Centralized broadcasting)
-    - #126: Yahoo Finance rate limiting (PR #133 - Token bucket algorithm)
-    - #123: Frontend WebSocket client (PR #142 - Real-time UI integration) ✅ **JUST COMPLETED**
-  - **Previous completions**: #2, #6, #8, #13, #16-22, #27, #30, #32-37, #50, #59, #63-66, #74, #80-83, #85, #88, #109
-- **Open**: 86 issues (1 more closed from 87)
-- **High Priority** (15 issues - accurately prioritized):
-  - **Core Features**: #23 (Company details), #24 (Screening UI), #123 (Frontend WebSocket), #118 (Portfolio analysis)
-  - **Performance Fixes**: #126 (Rate limiting)
-  - **Quality & Compliance**: #90 (Test coverage 78%→90%), #100 (Audit logging)
-  - **Other**: #1, #3, #9, #12, #51, #76, #77, #107
-- **Consolidated Issues**:
-  - **#90** (Test coverage) ← Merged #56, #60, #61, #69
-  - **#100** (Audit logging) ← Merged #101 (export history)
-  - **#111** (Frontend testing) ← Merged #53 (GA4 analytics)
-  - **#113** (Performance monitoring) ← Merged #38 (bundle optimization)
-- **Low Priority** (Correctly downgraded):
-  - #15 (Time series analysis - future feature)
-  - #25 (Chart visualization - nice-to-have)
-  - #131 (Connection pooling - premature optimization)
+4. **Rationale**:
+   - Draft PRs don't trigger workflows → cost savings
+   - Local testing catches issues before CI/CD
+   - User controls when automation runs
 
-## External APIs Used
+**Common Mistakes to Avoid**:
+- ❌ Push immediately after commit → ✅ Wait for user approval
+- ❌ Create ready-for-review PRs → ✅ Always start with drafts
+- ❌ Force-push repeatedly → ✅ Get commits right locally first
+
+See `.serena/memories/github_workflow_rules.md` for detailed workflow examples.
+
+## External APIs
 
 1. **EDINET API**: Japanese financial reports (https://disclosure.edinet-fsa.go.jp/)
 2. **Yahoo Finance**: Stock price data (via yfinance library)
@@ -363,288 +245,52 @@ gh issue list --repo tyuyoshi/stock_code --limit 1000 --json number --state open
 
 ## Google OAuth 開発環境設定
 
-**GCPプロジェクト**: `stock-code-dev`  
-**作成日**: 2025-11-08  
-**用途**: ローカル開発・動作確認
-
-### OAuth Client設定
-- **アプリケーションの種類**: ウェブアプリケーション
-- **承認済みリダイレクトURI**: `http://localhost:8000/api/v1/auth/google/callback`
+**GCPプロジェクト**: `stock-code-dev`
+**OAuth Client**:
 - **クライアントID**: `120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com`
-- **クライアントシークレット**: `backend/.env` に記載（Git管理外）
+- **リダイレクトURI**: `http://localhost:8000/api/v1/auth/google/callback`
+- **シークレット**: `backend/.env` に記載（Git管理外）
 
-### 環境変数設定
-```bash
-# backend/.env に以下を設定
-GOOGLE_CLIENT_ID=120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=（Google Consoleから取得したシークレット）
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
-```
+詳細は `backend/README.md` の「Google OAuth 2.0 認証設定」を参照
 
-詳細な設定手順は `backend/README.md` の「Google OAuth 2.0 認証設定」セクションを参照
+## Recent Major Updates
 
-## Dependency Updates
+### Completed PRs (2025/11 - See archived_sessions_2025_11.md for details)
+- ✅ PR #116: authlib 1.6.5 security update (2025/11/09)
+- ✅ PR #142: Frontend WebSocket client (2025/11/16)
 
-### PR #116: authlib 1.6.5 Security Update
-**Status**: ✅ **Merged** - 2025/11/09 (Resolved Dependabot alerts #27-30, Issue #109)
+### Active Development Focus
+- **Performance & Quality**: Test coverage (Issue #90), Audit logging (Issue #100)
+- **Core Frontend Pages**: Company details (#23), Screening UI (#24)
+- **Real-time Features**: Portfolio analysis API (#118), WebSocket monitoring (#124)
 
-**Dependency**: authlib 1.3.0 → 1.6.5
+### Deployment Status
+- **Current**: Development environment only
+- **Strategy**: Defer infrastructure deployment until MVP features complete
+- **Target**: GCP (Cloud Run, Cloud SQL, Redis Memorystore) - $23-34/month
+- **Timeline**: After Issues #23, #24, #90, #100 complete
 
-**Security Fixes** (All alerts auto-closed):
-- ✅ Alert #29 (HIGH): DoS via Oversized JOSE Segments → Fixed in 1.6.5
-- ✅ Alert #28 (HIGH): JWS/JWT accepts unknown crit headers (RFC violation) → Fixed in 1.6.4
-- ✅ Alert #27 (HIGH): Algorithm confusion with asymmetric public keys → Fixed in 1.3.1
-- ✅ Alert #30 (MEDIUM): JWE zip=DEF decompression bomb DoS → Fixed in 1.6.5
+See deployment section below for full infrastructure plan.
 
-**CI/CD Fix** (Issue #109 resolved):
-- Modified `backend/api/main.py` to skip OAuth validation in test environment
-- Prevents CI/CD failures when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not configured
-- Test environment already sets `environment="test"` in `conftest.py`
+## Active Development Priorities
 
-**Testing**:
-- ✅ authlib 1.6.5 installation verified
-- ✅ All auth-related tests passing (12/12 in test_auth.py)
-- ✅ Critical imports successful (OAuth2Client, jwt)
-- ✅ No breaking changes detected
+**Phase 1: Frontend Real-time Features** (Week 1-2) 🔥
+- Issue #123: Frontend WebSocket Client - COMPLETED ✅
+- Issue #118: Portfolio analysis API
 
-**Supersedes**: PR #108 (Dependabot PR, closed)
+**Phase 2: Core Frontend Pages** (Weeks 3-5) 🔥
+- Issue #23: Company Details Page - Ready to start
+- Issue #24: Screening Interface - Ready to start
 
-### PR #142: Frontend WebSocket Client Implementation
-**Status**: ✅ **Complete** - 2025/11/16 (Issue #123)
-
-**Summary**: Complete WebSocket client implementation for real-time stock price updates in the frontend, with automatic reconnection, environment-aware update intervals, and comprehensive performance optimization.
-
-**Key Components Implemented**:
-1. **WebSocket Client** (`frontend/src/lib/websocket.ts`)
-   - Automatic reconnection with exponential backoff (3s, 6s, 12s, 24s, 48s)
-   - Connection state management (CONNECTING, CONNECTED, RECONNECTING, DISCONNECTED, ERROR)
-   - Token-based authentication via `/api/v1/auth/ws-token` endpoint
-   - Ping/pong heartbeat handling
-   - Memory leak prevention through proper cleanup
-
-2. **useRealtimePrices Hook** (`frontend/src/lib/hooks/useRealtimePrices.ts`)
-   - React Hook for component integration
-   - Initial data fetch via REST API
-   - Real-time updates via WebSocket
-   - Manual refresh functionality
-   - Auto-connect on mount option
-   - Proper cleanup on unmount
-
-3. **WatchlistTable Component** (`frontend/src/components/watchlist/WatchlistTable.tsx`)
-   - Real-time price updates with visual feedback
-   - Connection status indicator (5 states with icons/colors)
-   - Performance optimizations (React.memo, useCallback, useMemo)
-   - Price change animations (green ↑ / red ↓)
-   - Responsive design integration
-
-**Backend Updates** (`backend/api/routers/websocket.py`, `backend/core/config.py`):
-- Environment-aware update intervals:
-  - **Development**: 10s (trading days), 30s (non-trading days)
-  - **Production**: 5min (trading days), 30min (non-trading days)
-- Console logging for price updates visibility
-- Configuration properties for interval management
-
-**Documentation**:
-- ✅ Consolidated `WEBSOCKET_TESTING.md` into `frontend/README.md` (520+ lines)
-- ✅ 10 comprehensive test cases (TC-01 to TC-10)
-- ✅ Performance benchmarks and measurement tools
-- ✅ Fixed incorrect API endpoints (`/items` → `/stocks`)
-
-**Testing Completed**:
-- TC-01: Initial connection ✅
-- TC-02: Real-time price updates ✅
-- TC-03: Connection interruption & reconnection ✅
-- TC-04: Manual disconnection ✅
-- TC-05: Performance & memory leaks ✅
-- TC-06: Multiple concurrent connections ✅
-- TC-07-10: Various edge cases ✅
-
-**Related Issues Created**:
-- #144: ウォッチリスト銘柄のCRUD操作UI実装
-- #145: 銘柄メモのモーダル表示と編集機能
-- #146: 複数ウォッチリストの管理UI実装
-- #147: ウォッチリスト画面のレスポンシブデザイン検証と修正
-- #148: 有料プラン・Stripe決済システムの実装 (NEW - 2025/11/16)
-- #149: 初期企業データ1000社のDB投入 (NEW - 2025/11/16)
-- #150: 企業検索ページの実装 (NEW - 2025/11/16)
-- #151: 全画面レスポンシブデザインの包括的実装 (NEW - 2025/11/16)
-- #152: 企業詳細ページ（株価情報セクション）の拡張 (NEW - 2025/11/16)
-
-**Performance Optimizations**:
-- React.memo for component memoization
-- useCallback for callback stability
-- useMemo for expensive calculations
-- Proper WebSocket cleanup preventing memory leaks
-- Environment-based update intervals to reduce API calls in development
-
-**Files Modified**:
-- `frontend/src/lib/websocket.ts` - Core WebSocket client with reconnection logic
-- `frontend/src/lib/hooks/useRealtimePrices.ts` - React Hook integration
-- `frontend/src/components/watchlist/WatchlistTable.tsx` - UI component
-- `backend/api/routers/websocket.py` - Environment-aware intervals
-- `backend/core/config.py` - WebSocket configuration properties
-- `frontend/README.md` - Consolidated comprehensive testing guide
-
-**Deleted Files**:
-- `frontend/WEBSOCKET_TESTING.md` - Consolidated into README.md per "One Directory, One README.md Rule"
-
-## Known Issues and TODOs
-
-### Critical Security Items (Must fix before production)
-- ✅ **python-jose vulnerability** fixed (Issue #63 - Completed 2025/11/01)
-- ✅ **python-multipart DoS vulnerability** fixed (Issue #64 - Completed 2025/11/01)
-- ✅ **aiohttp multiple vulnerabilities** fixed (Issue #65 - Completed 2025/11/01)
-- ✅ **Other dependency vulnerabilities** fixed (Issue #66 - Completed 2025/11/01)
-- ✅ **authlib security update** completed (PR #116 - Merged 2025/11/09, alerts #27-30 fixed)
-
-### Core Features Completed
-- ✅ **Database migrations** with Alembic - Fully configured and operational (Issue #31 - Completed 2025/11/02)
-- ✅ **Core API endpoints** for business logic - 22 endpoints implemented (Issue #35 - PR #76 - Completed 2025/11/08)
-
-### Performance & Quality Improvements (Active Development)
-
-- ✅ **Stock price auto-update** - Daily batch job completed (Issue #85 - PR #92)
-- ✅ **Database index optimization** - 7 indexes for query performance (Issue #88 - Completed 2025/11/08)
-- ✅ **Export API completion** - 3 export endpoints with security hardening (Issue #83 - PR #97 - Completed 2025/11/08)
-- **Test coverage expansion** - Error cases and edge cases (Issue #90) 🔥 HIGH PRIORITY
-- **Audit logging for exports** - Security and compliance (Issue #100) 🔥 HIGH PRIORITY
-- **Redis cache implementation** - Cache static data (Issue #89) ⚡ MEDIUM PRIORITY
-- **Comprehensive logging** - Production monitoring & debugging (Issue #84) ⚡ MEDIUM PRIORITY
-- **Data freshness check** - Auto-detect stale data (Issue #86)
-
-### Development Status
-- ✅ Initial setup phase completed
-- ✅ Core infrastructure in place  
-- ✅ **EDINET API & XBRL Parser implemented** (Issue #6)
-- ✅ **Financial indicators calculation engine** - 60+ indicators (Issue #13)
-- ✅ **Security hardening completed** (Issue #30) - CORS, Rate Limiting, Security Headers
-- ✅ **Test suite implementation completed** (Issue #32) - 78% coverage, 56/91 tests passing (PR #58)
-- ✅ **All security vulnerabilities fixed** (Issues #63-66) - 14 Dependabot alerts resolved (PR #67, #68, #70, #71)
-  - python-jose updated to 3.5.0
-  - python-multipart updated to 0.0.20
-  - aiohttp updated to 3.12.14
-  - requests updated to 2.32.4
-  - black updated to 24.3.0
-  - sentry-sdk updated to 1.45.1
-- ✅ **Yahoo Finance integration completed** (Issue #8, PR #75) - 2025/11/02
-  - Complete stock price data collection system
-  - 5 REST API endpoints with comprehensive testing
-  - Daily batch job automation ready
-  - Security hardening and performance optimization applied
-- ✅ **Core API Endpoints completed** (Issue #35, PR #76) - 2025/11/08
-  - 企業情報API - 7 endpoints (CRUD, financials, indicators)
-  - スクリーニングAPI - 5 endpoints (filters, presets, saved searches)
-  - 比較API - 5 endpoints (comparison, templates, rankings)
-  - エクスポートAPI - 5 endpoints (CSV/Excel export, templates)
-  - Total: 22 new endpoints with 78% test coverage
-- ✅ **Automatic Stock Price Update Batch Job completed** (Issue #85, PR #92) - 2025/11/08
-  - Daily cron job (16:00 JST weekdays) with Docker scheduler service
-  - Japanese trading calendar with holiday detection
-  - Slack/Email notification system for batch results
-  - Error handling and retry mechanisms (3x with exponential backoff)
-  - Production-ready Cloud Scheduler configuration (Terraform)
-- ✅ **Database Index Optimization completed** (Issue #88, PR #93) - 2025/11/08
-  - 7 strategic performance indexes for query optimization
-  - Screening API target: 40ms → 20ms (50% improvement)
-  - Comprehensive test suite with security hardening
-  - SQLAlchemy parameterized queries (SQL injection prevention)
-  - Follow-up issues created: #94 (test reliability), #95 (query validation), #96 (production monitoring)
-- ✅ **Export API Implementation completed** (Issue #83, PR #97) - 2025/11/08
-  - 3 export endpoints: Screening, Comparison, Financial Data
-  - CSV/Excel format support with Japanese character encoding (UTF-8 BOM)
-  - Security: Field injection protection, N+1 query fix, parameterized queries
-  - 12 comprehensive test cases with 78% coverage maintained
-  - Follow-up issues created: #98 (code quality), #99 (performance testing), #100 (audit logging), #101 (export history)
-- ✅ **Google OAuth Authentication completed** (Issue #34, PR #105) - Merged 2025/11/09
-  - Complete OAuth 2.0 flow with Google Identity Platform
-  - User model with investment profile (experience, style, industries)
-  - Redis-based session management (7-day TTL, secure cookies)
-  - Authentication middleware with role-based access control (free/premium/enterprise)
-  - 5 auth endpoints: login, callback, me, profile update, logout
-  - 19 comprehensive tests (17 passing, 2 skipped)
-  - Production-ready security features:
-    - CSRF protection with OAuth state parameter (5-min TTL, one-time use)
-    - Rate limiting (5 req/min on auth endpoints)
-    - Error sanitization (generic client messages, detailed server logs)
-    - Transaction safety with rollback
-    - Race condition handling for concurrent user creation
-    - HTTPOnly cookies with SameSite=lax
-    - Email verification enforcement
-  - Unblocked Issues: #50 (Watchlist), #51 (Alerts), #52 (Analytics), #100 (Audit logging)
-- 🚀 User features ready for development (Issues #50-53)
-
-### Next Session Priority (Updated 2025/11/09 - After Issue #126 Completion)
-
-**Phase 1: Frontend Real-time Features** (Week 1-2) 🔥 HIGH
-1. **Issue #123**: Frontend WebSocket Client - React/Next.js real-time UI integration (HIGH)
-   - WebSocket client with auto-reconnect
-   - useRealtimePrices React Hook
-   - WatchlistTable real-time updates
-2. **Issue #118**: Portfolio analysis API - P&L, sector allocation, risk metrics (HIGH)
-
-**Phase 2: Core Frontend Pages** (Weeks 3-5) 🔥 HIGH
-3. **Issue #23**: Company Details Page - Financial data visualization (HIGH)
-   - Ready to start (frontend foundation complete)
-   - Backend APIs available (Issue #35)
-4. **Issue #24**: Screening Interface - Advanced filtering UI (HIGH)
-   - Ready to start (frontend foundation complete)
-   - Backend APIs available (Issue #35)
-
-**Phase 3: Quality & Compliance** (Week 6) ⚡ HIGH
-5. **Issue #100**: Audit logging - Export operations, compliance (HIGH)
-   - Now includes export history tracking (merged from #101)
-6. **Issue #90**: Test coverage enhancement - Integration tests, error cases (MEDIUM)
-   - Target: 78% → 90%+
-   - Consolidated from #56, #60, #61, #69
-
-**Phase 4: WebSocket Optimizations** (Future) ⚡ MEDIUM
-7. **Issue #128**: Market hours optimization - Adaptive polling
-8. **Issue #129**: Database query optimization - Caching
-9. **Issue #130**: Message compression - Bandwidth reduction
-
-**Phase 5: Nice-to-Have Features** (Future) 🔵 LOW
-10. **Issue #25**: Chart Visualization - Interactive stock price charts (LOW)
-11. **Issue #131**: Connection pooling - Resource limits (LOW, defer until scale needed)
-
-### GitHub Issue Cleanup History
-
-**2025/11/09 Issue #126 Completion** (Yahoo Finance API Rate Limiting):
-- ✅ **Issue #126 completed and merged** via PR #133
-- **Implemented**: Token Bucket rate limiting with Redis backend
-- **Key improvements**:
-  - Atomic Lua scripts preventing race conditions
-  - 20% performance improvement (removed double rate limiting)
-  - 12 comprehensive unit tests with 100% atomic behavior coverage
-- **Follow-up issues created**: #134 (config validation), #135 (metrics/monitoring)
-- **Issue fixes**: #4 and #57 title/content mismatches corrected
-
-**2025/11/09 Major Cleanup** (Second cleanup of the day):
-- ✅ **10 issues closed**: #5, #9, #26, #38, #53, #56, #60, #61, #69, #98, #101, #102, #127
-  - 5 completed issues (#5, #9, #26, #102)
-  - 1 duplicate (#127 → #126)
-  - 1 not-separate-issue (#98)
-  - 4 merged into umbrella issues (#38→#113, #53→#111, #101→#100, #56,#60,#61,#69→#90)
-- ✅ **4 umbrella issues** strengthened with merged scope
-- ✅ **8 issues** updated with high-priority labels (#23, #24, #123, #125)
-- ✅ **3 issues** correctly downgraded to low-priority (#15, #25, #131)
-- ✅ **3 frontend issues** updated with ready-to-start status (#23, #24, #25)
-- ✅ **Total reduction**: 97 issues → 87 open (10% reduction, 29% total from morning)
-
-**2025/11/09 Morning Cleanup** (First cleanup):
-- ✅ **8 duplicate/completed issues** closed (#2, #8, #16, #18-21, #36, #59)
-- ✅ **Dependency relationships** clarified for user features (#50, #51, #52, #100)
-- ✅ **Priority labels** updated for next development phase (#22, #50, #100 → HIGH)
-- ✅ **Total reduction**: 101 issues → 97 open (4% reduction)
-
-**2025/11/08 Cleanup**:
-- ✅ **5 duplicate issues** closed and consolidated (#37, #74, #80-82)
-- ✅ **Development roadmap** optimized for efficiency
+**Phase 3: Quality & Compliance** (Week 6) ⚡
+- Issue #100: Audit logging - Export operations, compliance
+- Issue #90: Test coverage 78% → 90%+
 
 ## Docker Safe Operation Guidelines ⚠️
 
-### CRITICAL: Data Protection 
+### CRITICAL: Data Protection
 
-**永続化されたデータ**: 以下のボリュームには重要なデータが保存されています
+**永続化されたデータ**:
 - `postgres_data` - 企業マスター、財務データ、株価履歴
 - `redis_data` - APIキャッシュ、セッション情報
 - `scheduler_logs` - バッチ実行履歴、エラーログ
@@ -652,23 +298,21 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 ### ❌ 絶対に実行してはいけないコマンド
 
 ```bash
-# データ完全消失の危険
-docker system prune -a --volumes  # 全データ削除
-docker volume prune                # 未使用ボリューム削除  
-docker compose down -v            # ボリューム含めて削除
-docker volume rm postgres_data    # データベース削除
+docker system prune -a --volumes  # 全データ削除 - DANGER!
+docker volume prune               # 未使用ボリューム削除 - DANGER!
+docker compose down -v            # ボリューム含めて削除 - DANGER!
 ```
 
 ### ✅ 安全な開発コマンド
 
 ```bash
-# 安全なコンテナ操作
+# コンテナ操作
 docker compose restart            # サービス再起動
 docker compose stop               # 停止 (データ保持)
 docker compose build --no-cache   # イメージ再ビルド
 docker compose logs --tail=100    # ログ確認
 
-# 安全なクリーンアップ  
+# クリーンアップ (安全)
 docker image prune                # 未使用イメージのみ削除
 docker container prune            # 停止コンテナのみ削除
 
@@ -677,178 +321,74 @@ docker compose --profile scheduler up -d    # バッチジョブ開始
 docker compose --profile scheduler down     # バッチジョブ停止
 ```
 
-### 🔄 スケジューラー運用
-
-```bash
-# バッチジョブ状態確認
-docker exec stock_code_scheduler crontab -l
-docker compose logs scheduler
-
-# 手動バッチ実行 (テスト用)
-cd backend && source venv/bin/activate
-python -m batch.daily_update
-```
-
-### 🆘 データ復旧が必要な場合
-
-1. **即座に作業停止**
-2. **バックアップ確認** (将来実装予定)
-3. **Issue作成**: データ復旧の記録
-
 ## Troubleshooting
 
 ### Common Issues
 
-- **Database connection**: Check `DATABASE_URL` in `.env`
+- **Database connection**: Check `DATABASE_URL` in `backend/.env`
 - **Port conflicts**: Use `lsof -i :PORT` to find conflicts
 - **Docker issues**: Use safe commands above, avoid `-v` flag
 - **API errors**: Check logs with `docker compose logs backend`
-- **Cron not working**: Check `docker compose --profile scheduler logs`
 
-### Database Migrations (Alembic) ✅ Completed
+### Database Migrations (Alembic)
 
-**Status**: Fully configured and operational (Issue #31 completed - 2025/11/02)
+**Status**: Fully configured (Issue #31 completed)
 
-**Quick Commands** (Always in virtual environment):
 ```bash
-cd backend
-source venv/bin/activate
+cd backend && source venv/bin/activate
 alembic current                    # Check current migration
-alembic revision --autogenerate -m "Description"  # Generate migration
-alembic upgrade head                # Apply migrations
-python migrations/run_migrations.py upgrade  # Helper script
+alembic revision --autogenerate -m "Description"  # Generate
+alembic upgrade head               # Apply migrations
 ```
-
-**Configuration**:
-- ✅ Alembic initialized with SQLAlchemy 2.0 support
-- ✅ env.py configured with DATABASE_URL from environment (production-ready)
-- ✅ All models aggregated in models/__init__.py
-- ✅ Initial migration created and applied (4 tables)
-- ✅ Docker integration configured (auto-migration on startup)
-- ✅ Migration helper script with comprehensive CLI
-- ✅ Black formatter integration for generated migrations
-- ✅ Security hardened (no hardcoded credentials)
-- ✅ GitHub Actions CI/CD integrated
-
-**Implemented Tables**:
-- `companies` - Company master data
-- `financial_statements` - Financial reports
-- `stock_prices` - Daily stock prices
-- `financial_indicators` - Calculated metrics
 
 See `backend/README.md` for detailed documentation.
 
 ## Deployment Roadmap (GCP Infrastructure)
 
-### Strategy: Defer Until High-Priority Features Complete
+### Strategy: Defer Until MVP Features Complete
 
-**Decision** (2025/11/09): Deployment infrastructure issues created but deferred until after high-priority features are implemented. This allows faster feature delivery and early user feedback before investing in production infrastructure.
+**Decision** (2025/11/09): Deploy after high-priority features (#23, #24, #90, #100) complete.
 
 ### Deployment Issues Created
 
-**Phase 1: Critical Infrastructure** (HIGH Priority - ~$23-33/month)
-- **#136**: Cloud SQL (PostgreSQL) setup - Database persistence ($7-9/month)
-- **#137**: Redis Memorystore setup - Cache, sessions, rate limiting ($6-12/month)
-- **#138**: Secret Manager setup - Secure credentials management ($0/month)
-- **#4**: Cloud Run environment - Backend API deployment ($8-10/month)
+**Phase 1: Critical Infrastructure** (~$23-33/month)
+- **#136**: Cloud SQL (PostgreSQL) - $7-9/month
+- **#137**: Redis Memorystore - $6-12/month
+- **#138**: Secret Manager - $0/month
+- **#4**: Cloud Run (Backend API) - $8-10/month
 
-**Phase 2: DevOps & Observability** (HIGH-MEDIUM Priority)
-- **#139**: CI/CD Pipeline (Cloud Build + GitHub Actions) - Automated deployment (~$0.50/month)
-- **#140**: Monitoring & Logging (Cloud Monitoring, Logging, Error Reporting) - Observability ($0-2/month)
+**Phase 2: DevOps & Observability**
+- **#139**: CI/CD Pipeline (Cloud Build + GitHub Actions) - ~$0.50/month
+- **#140**: Monitoring & Logging - $0-2/month
 
-**Phase 3: Cost Optimization** (LOW Priority - Future)
-- **#141**: Cost optimization and monitoring - Budget alerts, resource optimization
+**Phase 3: Cost Optimization** (Future)
+- **#141**: Budget alerts, resource optimization
 
-**Total Estimated Cost**: $23-34/month (within budget)
-
-### Deployment Timeline
-
-**Current Status**: ❌ No staging or production environments exist
-
-**Recommended Timeline**:
-```
-Now (2025/11/09)
-│
-├─ HIGH PRIORITY: Feature Development (Weeks 1-5)
-│  ├─ Week 1-2: Frontend real-time features (#123, #118)
-│  ├─ Week 3-5: Core frontend pages (#23, #24)
-│  └─ Week 6: Quality & compliance (#100, #90)
-│
-└─ FUTURE: Infrastructure Deployment (Weeks 6-8)
-   ├─ Week 6: Phase 1 - Critical infrastructure (#136-#138, #4)
-   ├─ Week 7: Phase 2 - DevOps (#139, #140)
-   └─ Week 8: Phase 3 - Optimization (#141)
-```
-
-**Rationale**:
-- 🚀 **Faster Time-to-Market**: Focus on features first, infrastructure later
-- 📊 **Data-Driven Decisions**: Gather user feedback before scaling
-- 💰 **Cost Efficiency**: Avoid infrastructure costs while building features
-- 🔄 **Iterative Approach**: Deploy when MVP is ready, not before
+**Total Estimated Cost**: $23-34/month
 
 ### Infrastructure Stack (Terraform-managed)
 
-**Compute & Orchestration**:
-- Cloud Run (Backend API)
-- Cloud Scheduler (Batch jobs)
-- Cloud Build + GitHub Actions (CI/CD)
+**Compute**: Cloud Run, Cloud Scheduler, Cloud Build + GitHub Actions
+**Data**: Cloud SQL (PostgreSQL), Redis Memorystore, Cloud Storage
+**Security**: Secret Manager, Cloud Logging, Cloud Monitoring, Error Reporting
+**Networking**: VPC peering, Cloud CDN (future), Cloud Armor (future)
 
-**Data & Storage**:
-- Cloud SQL for PostgreSQL (db-f1-micro, 10GB HDD)
-- Redis Memorystore (Basic tier, 1GB)
-- Cloud Storage (Backups, static assets)
+### Timeline & Rationale
 
-**Security & Observability**:
-- Secret Manager (Credentials)
-- Cloud Logging (Logs, 50GB/month free tier)
-- Cloud Monitoring (Metrics, dashboards)
-- Error Reporting (Exception tracking)
+**Current**: Development environment only
+**Deploy**: After MVP features complete (Issues #23, #24, #90, #100)
 
-**Networking**:
-- VPC peering (Cloud SQL, Redis)
-- Cloud CDN (Frontend static assets - future)
-- Cloud Armor (DDoS protection - future)
-
-### Cost Breakdown (Target: $23-33/month)
-
-| Service | Monthly Cost | Configuration | Notes |
-|---------|-------------|---------------|-------|
-| Cloud Run | $8-10 | Min instances: 0, CPU allocation: request-only | Pay-per-use, scales to zero |
-| Cloud SQL | $7-9 | db-f1-micro, 10GB HDD, no HA | Upgradable to HA when needed |
-| Redis Memorystore | $6-12 | Basic tier, 1GB | Session, cache, rate limiting |
-| Cloud Storage | $1-2 | Lifecycle policies, Nearline for backups | Minimal usage initially |
-| Artifact Registry | ~$0.50 | ~5 Docker images | Container image storage |
-| Networking | ~$1 | Same region, minimize egress | Optimize data transfer |
-| Cloud Logging | $0 | Free tier (50GB/month) | Sufficient for initial scale |
-| Cloud Monitoring | $0 | Free tier | Metrics and dashboards |
-| Cloud Build | $0 | Free tier (120 min/day) | CI/CD automation |
-| **Total** | **$23-34/month** | | **Within budget** ✅ |
+**Rationale**:
+- 🚀 Faster time-to-market: Features before infrastructure
+- 📊 Data-driven decisions: User feedback before scaling
+- 💰 Cost efficiency: Avoid premature infrastructure spend
+- 🔄 Iterative approach: Deploy when MVP ready
 
 ### Risk Mitigation
 
-**Risks**:
-1. ❌ **No staging environment** - Test in production initially
-2. ❌ **No disaster recovery** - Single region deployment
-3. ❌ **No high availability** - Acceptable for MVP
+**Risks**: No staging, no DR, no HA initially (acceptable for MVP)
+**Mitigations**: 78% test coverage, monitoring & alerting, easy rollback (Cloud Run revisions, Terraform state)
 
-**Mitigations**:
-1. ✅ **Comprehensive testing** - 78% coverage, integration tests
-2. ✅ **Monitoring & alerting** - Quick detection of issues
-3. ✅ **Easy rollback** - Cloud Run revisions, Terraform state
-4. ✅ **Gradual rollout** - Canary deployments, feature flags (future)
+---
 
-### Future Scaling Considerations
-
-**When to scale infrastructure** (Traffic/Revenue milestones):
-- **1,000 users**: Current setup sufficient
-- **10,000 users**: Add HA (Cloud SQL standby, Redis Standard tier) - ~$30-40/month additional
-- **100,000 users**: Multi-region, CDN, load balancing - ~$200-300/month
-- **1M+ users**: Kubernetes (GKE), Cloud Spanner, global distribution - ~$1000+/month
-
-### Reference Documentation
-
-- **Terraform Modules**: `infrastructure/terraform/` (to be created)
-- **Deployment Guide**: `infrastructure/README.md` (to be created)
-- **Runbook**: Cloud Run deployment, rollback, troubleshooting (to be created)
-- **Cost Monitoring**: Billing alerts, budget reports (Issue #141)
-
+**Historical Reference**: For completed session details, see `.serena/memories/archived_sessions_2025_11.md` and `.serena/memories/issue_cleanup_history.md`
