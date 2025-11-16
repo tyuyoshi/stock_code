@@ -2,7 +2,7 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize]
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
@@ -12,15 +12,12 @@ on:
 
 jobs:
   claude-review:
-    # Skip draft PRs to save costs (CLAUDE.md compliance)
     # Optional: Filter by PR author
     # if: |
-    #   !github.event.pull_request.draft &&
-    #   (github.event.pull_request.user.login == 'external-contributor' ||
-    #    github.event.pull_request.user.login == 'new-developer' ||
-    #    github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR')
-    if: ${{ !github.event.pull_request.draft }}
-
+    #   github.event.pull_request.user.login == 'external-contributor' ||
+    #   github.event.pull_request.user.login == 'new-developer' ||
+    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    
     runs-on: ubuntu-latest
     permissions:
       contents: read
