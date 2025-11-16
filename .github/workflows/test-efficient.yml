@@ -89,9 +89,11 @@ jobs:
     name: Backend Tests & Quality
     needs: changes
     if: >
-      needs.changes.outputs.backend == 'true' ||
-      github.event.inputs.run_all_tests == 'true' ||
-      github.event_name == 'workflow_dispatch'
+      (needs.changes.outputs.backend == 'true' ||
+       github.event.inputs.run_all_tests == 'true' ||
+       github.event_name == 'workflow_dispatch') &&
+      (github.event_name != 'pull_request_target' ||
+       !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     
     services:
@@ -183,9 +185,11 @@ jobs:
     name: Frontend Tests & Build
     needs: changes
     if: >
-      needs.changes.outputs.frontend == 'true' ||
-      github.event.inputs.run_all_tests == 'true' ||
-      github.event_name == 'workflow_dispatch'
+      (needs.changes.outputs.frontend == 'true' ||
+       github.event.inputs.run_all_tests == 'true' ||
+       github.event_name == 'workflow_dispatch') &&
+      (github.event_name != 'pull_request_target' ||
+       !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     
     steps:
@@ -232,8 +236,10 @@ jobs:
     name: Docker Build Test
     needs: changes
     if: >
-      needs.changes.outputs.docker == 'true' ||
-      github.event.inputs.run_all_tests == 'true'
+      (needs.changes.outputs.docker == 'true' ||
+       github.event.inputs.run_all_tests == 'true') &&
+      (github.event_name != 'pull_request_target' ||
+       !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     
     steps:
