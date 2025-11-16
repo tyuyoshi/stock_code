@@ -151,6 +151,10 @@ npm run build           # Production build
 
 ### Planned 📋
 - **Intraday Data Persistence**: TimescaleDB + GCS 3-tier storage for 5-minute data (Issue #159, HIGH PRIORITY)
+- **Issue #164**: Test coverage for company details page (StockPriceChart, useHash, Header) - HIGH PRIORITY, MVP milestone
+- **Issue #163**: Chart performance optimization with useMemo - Medium priority
+- **Issue #161**: useHash hook refactoring (remove History API monkey patching) - Medium priority
+- **Issue #162**: Auth configuration centralization - Low priority
 - Chart visualization enhancements (Issue #25)
 - Alert notifications (Issue #51)
 - User analytics (Issue #52)
@@ -264,7 +268,14 @@ See `.serena/memories/github_workflow_rules.md` for detailed workflow examples.
 - ✅ PR #142: Frontend WebSocket client (2025/11/16)
 - ✅ PR #157: Initial data loading scripts (2025/11/16)
 - ✅ Direct commit: GitHub Actions cost optimization (Draft PR skip, ready_for_review trigger) (2025/11/16)
-- ✅ Issue #23: Company Details Page with intraday charts (5m/15m/1h intervals), intelligent period selection, yfinance 0.2.49 upgrade (2025/11/16)
+- ✅ PR #160: Company Details Page UI/UX improvements + null safety fix (2025/11/16)
+  - Issue #23 completion: Intraday charts (5m/15m/1h), intelligent period selection, yfinance 0.2.49 upgrade
+  - Code review response: StockPriceChart null safety improvements (type-safe filtering, removed non-null assertions)
+  - Created Issues #161-164 for future enhancements (useHash refactor, auth config centralization, chart memoization, test coverage)
+- ✅ Direct commit: README整理 - 冗長な情報削除とCLAUDE.md誘導強化 (2025/11/16)
+  - 3ファイル簡素化: README.md (320→117行), backend/README.md (589→267行), frontend/README.md (588→277行)
+  - 旧ロードマップ、冗長な技術スタック、OAuth/WebSocket詳細テスト情報を削除
+  - 全READMEでCLAUDE.mdへの参照を明確化し、情報の重複を解消
 
 ### Active Development Focus
 - **Performance & Quality**: Test coverage (Issue #90), Audit logging (Issue #100)
