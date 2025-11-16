@@ -2,21 +2,14 @@
 
 FastAPIベースのバックエンドサービス。日本の上場企業の財務データ収集・処理・分析APIを提供します。
 
-## 概要
-
-このバックエンドは、日本の上場企業に関する財務データの収集、処理、分析のためのRESTful APIを提供します。FastAPI、SQLAlchemy 2.0、PostgreSQLで構築されています。
-
 ## 技術スタック
 
-- **フレームワーク**: FastAPI (Python 3.11+)
-- **データベース**: PostgreSQL with SQLAlchemy ORM
-- **マイグレーション**: Alembic
-- **データ処理**: Pandas, NumPy, SciPy
-- **APIクライアント**: EDINET API, Yahoo Finance (yfinance)
-- **認証**: Google OAuth 2.0, Redis Session Management
-- **テスト**: pytest, pytest-asyncio, pytest-cov
-- **キャッシュ**: Redis
-- **セキュリティ**: OAuth 2.0認証, Rate Limiting, CORS
+- **Framework**: FastAPI (Python 3.11+)
+- **Database**: PostgreSQL + SQLAlchemy 2.0
+- **Cache**: Redis (sessions, rate limiting)
+- **Authentication**: Google OAuth 2.0
+- **Data Sources**: EDINET API, Yahoo Finance
+- **Testing**: pytest, 78% coverage
 
 ## セットアップ
 
@@ -25,11 +18,10 @@ FastAPIベースのバックエンドサービス。日本の上場企業の財�
 - Python 3.11+
 - PostgreSQL 15+
 - Redis 7+
-- 仮想環境 (venv)
 
 ### インストール
 
-**重要**: ローカル環境をクリーンに保つため、必ず仮想環境を使用してください！
+**重要**: 必ず仮想環境を使用してください！
 
 ```bash
 # 仮想環境の作成と有効化
@@ -40,364 +32,142 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 環境変数の設定
-# ⚠️ 注意: backend/.env.example は存在しません
-# プロジェクトルートの .env.example を使用してください
-cd /Users/tsuyoshi-hasegawa/Documents/workspace/github/private/stock_code
-cp .env.example backend/.env
-
-# backend/.env を編集して設定を行う
-vi backend/.env  # または任意のエディタ
+cp ../env.example .env
+# .env を編集して設定を行う
 ```
 
 ### 環境変数
 
-`backend/.env` に以下を設定:
+`.env` ファイルに以下を設定:
 
 ```env
-# アプリケーション設定
-APP_NAME="Stock Code"
-ENVIRONMENT=development
-DEBUG=true
-
-# データベース
+# Database
 DATABASE_URL=postgresql://stockcode:stockcode123@localhost:5432/stockcode
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
 
-# Google OAuth 2.0（開発環境）
-GOOGLE_CLIENT_ID=120481795465-1jn41flhq5t3m0f3of03huesokf2h380.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=（Google Consoleから取得）
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
-# セッション設定
+# Session
 SESSION_SECRET_KEY=（python -c "import secrets; print(secrets.token_urlsafe(32))" で生成）
 SESSION_EXPIRE_DAYS=7
-SESSION_COOKIE_HTTPONLY=true
-SESSION_COOKIE_SECURE=false  # 本番環境ではtrue
 
-# API Keys
-EDINET_API_KEY=your-edinet-api-key
+# Yahoo Finance Rate Limiting
+YAHOO_FINANCE_MAX_TOKENS=100
+YAHOO_FINANCE_REFILL_RATE=0.5  # 30 requests/min
 ```
 
-## Google OAuth 2.0 認証設定
+## Google OAuth 2.0 設定
 
-### 開発用OAuth認証情報の作成
+### 1. Google Cloud Console
 
-#### ステップ1: Google Cloud Consoleにアクセス
 1. [Google Cloud Console](https://console.cloud.google.com/) にアクセス
-2. プロジェクトを選択または作成（推奨: `stock-code-dev`）
-
-#### ステップ2: OAuth 2.0 認証情報の作成
-1. **APIs & Services** > **認証情報** に移動
-2. **+ 認証情報を作成** > **OAuth クライアント ID**
-3. 同意画面の設定（初回のみ）:
+2. プロジェクトを作成（例: `stock-code-dev`）
+3. **APIs & Services** > **認証情報** > **+ 認証情報を作成** > **OAuth クライアント ID**
+4. 同意画面の設定:
    - ユーザータイプ: **外部**
    - アプリ名: Stock Code
-   - サポートメール: あなたのメールアドレス
-   - 開発者の連絡先: あなたのメールアドレス
-4. アプリケーションの種類: **ウェブアプリケーション**
-5. 名前: Stock Code Local Development
-6. 承認済みのリダイレクトURIを追加:
+5. アプリケーションの種類: **ウェブアプリケーション**
+6. 承認済みのリダイレクトURI:
    ```
    http://localhost:8000/api/v1/auth/google/callback
    ```
-7. **作成** をクリック
-8. **クライアントID** と **クライアントシークレット** をコピー
+7. **作成** → クライアントIDとシークレットをコピー
 
-#### ステップ3: 環境変数に設定
+### 2. 環境変数に設定
+
 ```bash
-# backend/.env に以下を追加
-GOOGLE_CLIENT_ID=あなたのクライアントID.apps.googleusercontent.com
+# .env に追加
+GOOGLE_CLIENT_ID=あなたのクライアントID
 GOOGLE_CLIENT_SECRET=あなたのクライアントシークレット
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 
 # セッション秘密鍵を生成
 python -c "import secrets; print(f'SESSION_SECRET_KEY={secrets.token_urlsafe(32)}')"
-# 出力された値を SESSION_SECRET_KEY に設定
 ```
 
-### ローカル環境でのテスト
+### 3. 動作確認
 
-#### サービスの起動
 ```bash
-# PostgreSQL と Redis を起動
+# Services起動
 docker compose up postgres redis -d
 
-# 起動確認
-docker ps | grep -E "postgres|redis"
-
-# Redis 動作確認
-docker exec stock_code_redis redis-cli ping
-# PONG と表示されればOK
-```
-
-#### バックエンドサーバーの起動
-```bash
-cd backend
+# Backend起動
 source venv/bin/activate
-
-# マイグレーション実行（初回のみ）
 alembic upgrade head
+uvicorn api.main:app --reload
 
-# サーバー起動
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### 認証フローのテスト
-
-**ブラウザでのテスト**:
-1. ブラウザで `http://localhost:8000/api/v1/auth/google/login` にアクセス
-2. Googleログイン画面にリダイレクトされる
-3. アプリケーションを承認
-4. コールバックURLにリダイレクトされ、JSONレスポンスが表示される
-5. `session_token` をコピー
-
-**APIテスト**:
-```bash
-# セッショントークンを環境変数に設定
-export TOKEN="あなたのセッショントークン"
-
-# ユーザー情報取得
-curl -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8000/api/v1/auth/me
-
-# プロフィール更新
-curl -X PUT \
-     -H "Authorization: Bearer $TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "investment_experience": "intermediate",
-       "investment_style": "long_term",
-       "interested_industries": ["technology", "finance"]
-     }' \
-     http://localhost:8000/api/v1/auth/profile
-
-# ログアウト
-curl -X POST \
-     -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8000/api/v1/auth/logout
-```
-
-### 認証API エンドポイント
-
-| メソッド | エンドポイント | 説明 | 認証 |
-|---------|---------------|------|-----|
-| GET | `/api/v1/auth/google/login` | Googleログイン開始 | 不要 |
-| GET | `/api/v1/auth/google/callback?code=...` | OAuth認証コールバック | 不要 |
-| GET | `/api/v1/auth/me` | 現在のユーザー情報取得 | 必要 |
-| PUT | `/api/v1/auth/profile` | プロフィール更新 | 必要 |
-| POST | `/api/v1/auth/logout` | ログアウト | 必要 |
-
-### データベース・セッション確認
-
-**PostgreSQLでユーザー確認**:
-```bash
-docker exec -it stock_code_postgres psql -U stockcode -d stockcode
-
-# ユーザーテーブル確認
-SELECT id, email, name, role, investment_experience FROM users;
-
-\q  # 終了
-```
-
-**Redisでセッション確認**:
-```bash
-docker exec -it stock_code_redis redis-cli
-
-# セッション一覧
-KEYS session:*
-
-# 特定セッションの内容
-GET session:あなたのセッショントークン
-
-# 有効期限確認（秒単位）
-TTL session:あなたのセッショントークン
-
-exit  # 終了
+# ブラウザでテスト
+# http://localhost:8000/api/v1/auth/google/login にアクセス
 ```
 
 ## データベースマイグレーション
 
-### Alembicの使い方
-
-**マイグレーション確認**:
 ```bash
 source venv/bin/activate
-alembic current  # 現在のマイグレーションバージョン確認
-alembic history  # マイグレーション履歴表示
-```
 
-**新しいマイグレーション作成**:
-```bash
-# モデル変更後、自動生成
+# 現在のバージョン確認
+alembic current
+
+# マイグレーション作成
 alembic revision --autogenerate -m "説明文"
-
-# 生成されたファイルを確認・編集
-# backend/alembic/versions/TIMESTAMP_説明文.py
 
 # マイグレーション適用
 alembic upgrade head
-```
 
-**マイグレーションのロールバック**:
-```bash
-# 1つ前に戻す
+# ロールバック
 alembic downgrade -1
-
-# 特定のバージョンに戻す
-alembic downgrade <revision_id>
 ```
 
 ## データ初期化
 
-### 概要
-
-初回セットアップ時に、データベースに初期データを投入するためのスクリプトを提供しています。
-
-- **企業マスターデータ**: 1000社の基本情報
-- **財務データ**: 各社の過去8四半期分の財務諸表
-- **株価データ**: 各社の過去1年分の日次株価
-- **財務指標**: 計算された60+の財務指標
-
 ### スクリプト一覧
 
-すべてのスクリプトは `backend/scripts/` ディレクトリにあります:
-
-| スクリプト | 説明 | データソース |
-|-----------|------|------------|
-| `init_companies.py` | 企業マスターデータの投入 | CSV |
-| `fetch_financials.py` | 財務データの取得・投入 | CSV / EDINET API |
-| `fetch_stock_prices.py` | 株価データの取得・投入 | CSV / Yahoo Finance |
-| `calculate_indicators.py` | 財務指標の計算・保存 | データベース |
+| スクリプト | 説明 |
+|-----------|------|
+| `init_companies.py` | 企業マスターデータ投入 |
+| `fetch_financials.py` | 財務データ取得・投入 |
+| `fetch_stock_prices.py` | 株価データ取得・投入 |
+| `calculate_indicators.py` | 財務指標計算 |
 
 ### 使用方法
 
-#### 1. サンプルCSVの生成（開発・テスト用）
-
 ```bash
-cd backend
 source venv/bin/activate
 
-# 企業データのサンプル生成
+# 1. サンプルデータ生成（開発用）
 python -m scripts.init_companies --generate-sample --sample-count 10
+python -m scripts.init_companies --csv companies_sample.csv
 
-# 財務データのサンプル生成
 python -m scripts.fetch_financials --generate-sample
+python -m scripts.fetch_financials --csv financials_sample.csv
 
-# 株価データのサンプル生成
 python -m scripts.fetch_stock_prices --generate-sample
-```
+python -m scripts.fetch_stock_prices --csv stock_prices_sample.csv
 
-#### 2. CSVからのデータ投入
-
-```bash
-# 企業マスターデータの投入
-python -m scripts.init_companies --csv companies.csv
-
-# 財務データの投入
-python -m scripts.fetch_financials --csv financials.csv
-
-# 株価データの投入
-python -m scripts.fetch_stock_prices --csv stock_prices.csv
-
-# 財務指標の計算
+# 2. 財務指標計算
 python -m scripts.calculate_indicators
-```
 
-#### 3. Yahoo Financeからの株価取得
-
-```bash
-# 全企業の株価を過去1年分取得
+# 3. Yahoo Financeから株価取得（本番用）
 python -m scripts.fetch_stock_prices --yahoo \
   --start-date 2024-01-01 \
   --end-date 2024-12-31 \
-  --rate-limit-delay 0.5  # APIレート制限の間隔（秒）
+  --rate-limit-delay 0.5
 ```
 
-#### 4. Dockerを使用したデータ投入
+### Dockerを使用
 
 ```bash
 # プロジェクトルートで実行
-
-# サンプルデータ生成と投入
 docker compose run --rm init_data python -m scripts.init_companies --generate-sample
 docker compose run --rm init_data python -m scripts.init_companies --csv companies_sample.csv
-
-docker compose run --rm init_data python -m scripts.fetch_financials --generate-sample
-docker compose run --rm init_data python -m scripts.fetch_financials --csv financials_sample.csv
-
-docker compose run --rm init_data python -m scripts.fetch_stock_prices --generate-sample
-docker compose run --rm init_data python -m scripts.fetch_stock_prices --csv stock_prices_sample.csv
-
-# 財務指標の計算
 docker compose run --rm init_data python -m scripts.calculate_indicators
 ```
 
-### CSVフォーマット
-
-#### companies.csv
-
-```csv
-ticker_symbol,edinet_code,company_name_jp,company_name_en,market_division,industry_code,industry_name,market_cap,shares_outstanding,fiscal_year_end,employee_count,website_url,description
-7201,E01234,日産自動車株式会社,Nissan Motor Co. Ltd.,Prime,5010,自動車製造業,1500000000000,100000000,03-31,20000,https://www.nissan.co.jp,自動車メーカー
-```
-
-必須フィールド: `ticker_symbol`, `company_name_jp`
-
-#### financials.csv
-
-```csv
-ticker_symbol,fiscal_year,fiscal_quarter,period_start,period_end,revenue,cost_of_revenue,gross_profit,operating_income,net_income,total_assets,current_assets,total_liabilities,current_liabilities,shareholders_equity,operating_cash_flow,investing_cash_flow,financing_cash_flow,free_cash_flow
-7201,2024,1,2024-01-01,2024-03-31,250000000000,150000000000,100000000000,20000000000,15000000000,800000000000,300000000000,500000000000,200000000000,300000000000,18000000000,-5000000000,-3000000000,13000000000
-```
-
-必須フィールド: `ticker_symbol`, `fiscal_year`, `period_end`
-
-#### stock_prices.csv
-
-```csv
-ticker_symbol,date,open_price,high_price,low_price,close_price,adjusted_close,volume,data_source
-7201,2024-01-04,1050.0,1080.0,1040.0,1070.0,1070.0,12500000,yahoo_finance
-```
-
-必須フィールド: `ticker_symbol`, `date`
-
-### トラブルシューティング
-
-**問題**: `Company not found` エラー
-
-**解決策**: 企業マスターデータを先に投入してください
-```bash
-python -m scripts.init_companies --csv companies.csv
-```
-
-**問題**: Rate limit exceeded (Yahoo Finance)
-
-**解決策**: `--rate-limit-delay` の値を増やしてください
-```bash
-python -m scripts.fetch_stock_prices --yahoo --rate-limit-delay 1.0
-```
-
-**問題**: データの重複
-
-**解決策**: デフォルトで重複はスキップされます。強制的に挿入する場合は `--allow-duplicates` フラグを使用してください
-
-### データ品質チェック
-
-すべてのスクリプトは実行後に以下の統計を出力します:
-
-- 処理レコード数
-- 成功数
-- エラー数
-- 重複スキップ数
-- バリデーション失敗数
-
-ログは `data_initialization.log` ファイルにも保存されます。
-
 ## テスト
-
-### テスト実行
 
 ```bash
 source venv/bin/activate
@@ -405,184 +175,93 @@ source venv/bin/activate
 # 全テスト実行
 pytest
 
-# カバレッジ付き実行
+# カバレッジ付き
 pytest --cov=. --cov-report=html
 
-# 特定のテストファイルのみ
+# 特定のテストのみ
 pytest tests/test_auth.py
 
-# 特定のテストケースのみ
-pytest tests/test_auth.py::test_google_login_redirect
-```
-
-### テストカバレッジ確認
-```bash
-# HTMLレポート生成
-pytest --cov=. --cov-report=html
-
-# ブラウザで確認
+# HTMLレポート確認
 open htmlcov/index.html  # macOS
 ```
 
 ## 開発
 
-### コードフォーマット
+### コード品質
+
 ```bash
-# Black フォーマッター
+# Formatting & Linting
 black .
-
-# Flake8 リント
 flake8
-
-# 型チェック
 mypy .
 ```
 
-### Yahoo Finance APIレート制限
+### Yahoo Finance レート制限
 
-Stock Codeは**Token Bucketレート制限アルゴリズム**を実装し、Yahoo Finance APIからのエラーやIPブロックを防止しています。
+Token Bucket アルゴリズムで Yahoo Finance API のレート制限を管理:
 
-#### 設定方法
+- **容量**: 100 tokens
+- **補充率**: 0.5 tokens/秒（30 requests/分）
+- **バックエンド**: Redis（複数インスタンス対応）
 
-```bash
-# backend/.env
-YAHOO_FINANCE_MAX_TOKENS=100
-YAHOO_FINANCE_REFILL_RATE=0.5  # tokens/second (30/min, 1800/hour)
-YAHOO_FINANCE_RATE_LIMIT_KEY=rate_limit:yahoo_api
-```
-
-#### 仕組み
-
-- **Token Bucket方式**: 100トークン容量、0.5トークン/秒で補充
-- **保守的な制限**: 毎分30リクエスト（Yahoo Financeの制限~2000/時間を大きく下回る）
-- **分散システム対応**: Redisバックエンドで複数インスタンス間で調整
-- **グレースフルな待機**: トークン不足時は失敗せずに待機
-
-#### レート制限の動作確認
-
-Python環境でレート制限の状態を確認できます：
-
-```python
-from services.yahoo_finance_client import YahooFinanceClient
-from core.dependencies import get_redis_client
-
-redis = next(get_redis_client())
-client = YahooFinanceClient(redis_client=redis)
-
-# レート制限の統計情報を取得
-stats = await client.rate_limiter.get_stats()
-print(stats)
-# {'current_tokens': 87.5, 'max_tokens': 100, 'refill_rate': 0.5,
-#  'utilization_percent': 12.5, 'last_refill': 1699876543.21}
-```
-
-#### トラブルシューティング
-
-**問題**: レート制限が厳しすぎる（待機時間が長い）
-- `YAHOO_FINANCE_REFILL_RATE` を増やす（例: 1.0 = 60リクエスト/分）
-- `YAHOO_FINANCE_MAX_TOKENS` を増やして大きなバーストに対応
-
-**問題**: それでも429エラーが発生する
-- `YAHOO_FINANCE_REFILL_RATE` を減らす（例: 0.3 = 18リクエスト/分）
-- 同じIPを使用している他のサービスがないか確認
-
-**問題**: Redis接続エラー
-- レート制限機能は無効化され、レガシーの固定遅延（0.5秒）にフォールバック
-- Redis接続を確認: `redis-cli ping`
-
-#### 実装の詳細
-
-- **統合箇所**: `YahooFinanceClient`の5つのAPIメソッド
-  - `get_stock_price()` - 株価取得
-  - `get_historical_data()` - 過去データ取得
-  - `get_company_info()` - 企業情報取得
-  - `get_dividends()` - 配当情報取得
-  - `get_stock_splits()` - 株式分割情報取得
-- **WebSocket対応**: リアルタイム価格更新も自動的にレート制限が適用
-- **バッチジョブ対応**: 日次株価更新ジョブも自動的にレート制限が適用
-- **並行処理制御**: Semaphore(5)で最大5並行リクエスト + Token Bucket制御
+設定は `.env` の `YAHOO_FINANCE_*` 変数で調整可能。
 
 ### API ドキュメント
 
-サーバー起動後、以下のURLでインタラクティブなAPIドキュメントにアクセスできます:
+サーバー起動後:
 
 - **Swagger UI**: http://localhost:8000/api/docs
 - **ReDoc**: http://localhost:8000/api/redoc
 
 ## トラブルシューティング
 
-### よくあるエラーと対処法
+### OAuth エラー: "redirect_uri_mismatch"
+- Google Console と `.env` の `GOOGLE_REDIRECT_URI` が完全一致しているか確認
 
-#### エラー: "redirect_uri_mismatch"
-- Google Consoleの承認済みリダイレクトURIと `.env` の `GOOGLE_REDIRECT_URI` が完全一致しているか確認
-- 末尾のスラッシュ有無、HTTP/HTTPSを確認
-
-#### エラー: "Session service unavailable"
+### "Session service unavailable"
 ```bash
-# Redisが起動しているか確認
+# Redis起動確認
 docker ps | grep redis
-
-# 起動していない場合
 docker compose up redis -d
 ```
 
-#### エラー: "Not authenticated"（有効なトークンのはず）
+### "Not authenticated"
 ```bash
-# Redisにセッションが存在するか確認
+# Redisのセッション確認
 docker exec stock_code_redis redis-cli GET session:あなたのトークン
-
-# 存在しない場合は再ログイン（セッション期限切れまたはRedis再起動）
 ```
 
-#### データベース接続エラー
+### データベース接続エラー
 ```bash
-# PostgreSQLが起動しているか確認
+# PostgreSQL起動確認
 docker ps | grep postgres
-
-# DATABASE_URLが正しいか確認
-echo $DATABASE_URL  # または .env ファイルを確認
+docker compose up postgres -d
 ```
 
 ## プロジェクト構成
 
 ```
 backend/
-├── api/              # APIエンドポイント
-│   ├── main.py      # FastAPIアプリケーション
-│   └── routers/     # ルーター（auth, companies, screening, etc）
-├── core/            # コア機能
-│   ├── config.py    # 設定管理
-│   ├── database.py  # データベース接続
-│   ├── auth.py      # 認証ミドルウェア
-│   └── sessions.py  # セッション管理
-├── models/          # SQLAlchemyモデル
-│   ├── user.py      # ユーザーモデル
-│   ├── company.py   # 企業モデル
-│   └── financial.py # 財務データモデル
-├── services/        # ビジネスロジック
-│   ├── google_oauth.py      # Google OAuth クライアント
-│   ├── edinet_client.py     # EDINET API クライアント
-│   ├── yahoo_finance_client.py  # Yahoo Finance クライアント
-│   └── data_processor.py    # データ処理
-├── schemas/         # Pydanticスキーマ（リクエスト/レスポンス）
-├── batch/           # バッチジョブ
-│   └── daily_update.py  # 日次株価更新
-├── tests/           # テストコード
-├── alembic/         # データベースマイグレーション
-└── requirements.txt # 依存パッケージ
+├── api/              # FastAPI application & routers
+├── core/             # Configuration, database, auth, sessions
+├── models/           # SQLAlchemy models
+├── services/         # Business logic (EDINET, Yahoo Finance, etc)
+├── schemas/          # Pydantic schemas
+├── batch/            # Batch jobs
+├── tests/            # Test code (78% coverage)
+├── alembic/          # Database migrations
+└── requirements.txt  # Dependencies
 ```
 
-## セキュリティに関する注意事項
+## セキュリティ
 
-- ✅ `backend/.env` は `.gitignore` に含まれています（Gitにコミットされません）
-- ✅ クライアントシークレットは `.env` にのみ記載
-- ✅ 本番環境では環境変数を Secret Manager で管理
-- ✅ HTTPOnly Cookie でXSS攻撃を防止
-- ✅ SameSite Cookie でCSRF攻撃を防止
-- ✅ SQLAlchemyのパラメータ化クエリでSQLインジェクションを防止
+- ✅ `.env` は Git 管理外
+- ✅ HTTPOnly Cookie で XSS 対策
+- ✅ SameSite Cookie で CSRF 対策
+- ✅ Parameterized queries で SQL injection 対策
 
-## その他のドキュメント
+## 関連ドキュメント
 
-- **プロジェクト全体の概要**: `/CLAUDE.md`
-- **テスト詳細**: `/backend/TESTING.md`
-- **開発ガイドライン**: `/CLAUDE.md` の Development Guidelines セクション
+- **プロジェクト全体**: [`/CLAUDE.md`](../CLAUDE.md)
+- **フロントエンド**: [`/frontend/README.md`](../frontend/README.md)
+- **バッチジョブ**: [`/backend/batch/README.md`](./batch/README.md)
