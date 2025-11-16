@@ -191,19 +191,39 @@ def batch_insert(
 
 def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -> bool:
     """
-    Validate that all required fields are present and not None.
+    Validate that all required fields are present and have valid values.
+
+    Validation rules:
+    - Field must exist in data dictionary
+    - Value must not be None
+    - For string fields: must not be empty or whitespace-only
+    - For string fields: must not be the literal string "nan" (pandas artifact)
 
     Args:
         data: Dictionary containing data to validate
         required_fields: List of required field names
 
     Returns:
-        True if all required fields are present, False otherwise
+        True if all required fields are present and valid, False otherwise
     """
     for field in required_fields:
-        if field not in data or data[field] is None:
-            logger.warning(f"Missing required field: {field}")
+        value = data.get(field)
+
+        # Check for None or missing field
+        if value is None:
+            logger.warning(f"Missing or null required field: {field}")
             return False
+
+        # For string fields, check for empty/whitespace/nan
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped or stripped.lower() == "nan":
+                logger.warning(
+                    f"Invalid required field: {field} "
+                    f"(empty or whitespace-only, value: {repr(value)})"
+                )
+                return False
+
     return True
 
 

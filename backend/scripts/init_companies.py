@@ -72,24 +72,25 @@ def load_companies_from_csv(csv_path: str) -> List[Dict]:
         # Convert DataFrame to list of dictionaries
         companies = []
         for _, row in df.iterrows():
+            # Helper function to safely convert string fields, avoiding "nan" strings
+            def safe_str_field(field_name: str) -> Optional[str]:
+                """Convert field to string, return None if NaN or empty."""
+                value = row.get(field_name)
+                if pd.notna(value):
+                    str_value = str(value).strip()
+                    # Reject empty strings and literal "nan" string
+                    if str_value and str_value.lower() != "nan":
+                        return str_value
+                return None
+
             company_data = {
-                "ticker_symbol": str(row.get("ticker_symbol", "")).strip(),
-                "edinet_code": str(row.get("edinet_code", "")).strip()
-                if pd.notna(row.get("edinet_code"))
-                else None,
-                "company_name_jp": str(row.get("company_name_jp", "")).strip(),
-                "company_name_en": str(row.get("company_name_en", "")).strip()
-                if pd.notna(row.get("company_name_en"))
-                else None,
-                "market_division": str(row.get("market_division", "")).strip()
-                if pd.notna(row.get("market_division"))
-                else None,
-                "industry_code": str(row.get("industry_code", "")).strip()
-                if pd.notna(row.get("industry_code"))
-                else None,
-                "industry_name": str(row.get("industry_name", "")).strip()
-                if pd.notna(row.get("industry_name"))
-                else None,
+                "ticker_symbol": safe_str_field("ticker_symbol"),
+                "edinet_code": safe_str_field("edinet_code"),
+                "company_name_jp": safe_str_field("company_name_jp"),
+                "company_name_en": safe_str_field("company_name_en"),
+                "market_division": safe_str_field("market_division"),
+                "industry_code": safe_str_field("industry_code"),
+                "industry_name": safe_str_field("industry_name"),
                 "market_cap": safe_float(row.get("market_cap")),
                 "shares_outstanding": safe_float(row.get("shares_outstanding")),
             }
