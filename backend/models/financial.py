@@ -70,6 +70,29 @@ class StockPrice(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class IntradayStockPrice(Base):
+    """Intraday Stock Price model for minute/hourly data"""
+
+    __tablename__ = "intraday_stock_prices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+
+    timestamp = Column(DateTime, nullable=False, index=True)
+    interval = Column(String(10), nullable=False)  # '1m', '5m', '15m', '1h'
+    open_price = Column(Float)
+    high_price = Column(Float)
+    low_price = Column(Float)
+    close_price = Column(Float)
+    volume = Column(Float)
+
+    # Data source tracking
+    data_source = Column(String(50), default="yahoo_finance")
+
+    # Timestamps
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class FinancialIndicator(Base):
     """Calculated Financial Indicators"""
 
