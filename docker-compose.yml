@@ -138,6 +138,48 @@ services:
     profiles:
       - scheduler
 
+  # Data Initialization Service (One-time data loading)
+  init_data:
+    build:
+      context: ./backend
+      dockerfile: ../infrastructure/docker/Dockerfile.backend
+    container_name: stock_code_init_data
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stockcode}:${POSTGRES_PASSWORD:-stockcode123}@postgres:5432/${POSTGRES_DB:-stockcode}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here-change-in-production}
+      # API Keys
+      EDINET_API_KEY: ${EDINET_API_KEY:-}
+      JPX_API_KEY: ${JPX_API_KEY:-}
+      # Timezone
+      TZ: Asia/Tokyo
+      # Python path
+      PYTHONPATH: /app
+    volumes:
+      - ./backend:/app
+      - ./data:/data  # Mount data directory for CSV files
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - stock_code_network
+    profiles:
+      - init
+    # Default command - can be overridden
+    command: >
+      sh -c "
+        echo 'Data initialization service ready.' &&
+        echo 'Available scripts:' &&
+        echo '  - python -m scripts.init_companies --csv /data/companies.csv' &&
+        echo '  - python -m scripts.fetch_financials --csv /data/financials.csv' &&
+        echo '  - python -m scripts.fetch_stock_prices --yahoo --start-date YYYY-MM-DD' &&
+        echo '  - python -m scripts.calculate_indicators' &&
+        echo 'Use docker-compose run init_data <command> to execute.'
+      "
+
   # Celery Worker (Optional - for background tasks)
   # celery_worker:
   #   build:

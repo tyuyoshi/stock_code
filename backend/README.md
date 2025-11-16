@@ -249,6 +249,152 @@ alembic downgrade -1
 alembic downgrade <revision_id>
 ```
 
+## データ初期化
+
+### 概要
+
+初回セットアップ時に、データベースに初期データを投入するためのスクリプトを提供しています。
+
+- **企業マスターデータ**: 1000社の基本情報
+- **財務データ**: 各社の過去8四半期分の財務諸表
+- **株価データ**: 各社の過去1年分の日次株価
+- **財務指標**: 計算された60+の財務指標
+
+### スクリプト一覧
+
+すべてのスクリプトは `backend/scripts/` ディレクトリにあります:
+
+| スクリプト | 説明 | データソース |
+|-----------|------|------------|
+| `init_companies.py` | 企業マスターデータの投入 | CSV |
+| `fetch_financials.py` | 財務データの取得・投入 | CSV / EDINET API |
+| `fetch_stock_prices.py` | 株価データの取得・投入 | CSV / Yahoo Finance |
+| `calculate_indicators.py` | 財務指標の計算・保存 | データベース |
+
+### 使用方法
+
+#### 1. サンプルCSVの生成（開発・テスト用）
+
+```bash
+cd backend
+source venv/bin/activate
+
+# 企業データのサンプル生成
+python -m scripts.init_companies --generate-sample --sample-count 10
+
+# 財務データのサンプル生成
+python -m scripts.fetch_financials --generate-sample
+
+# 株価データのサンプル生成
+python -m scripts.fetch_stock_prices --generate-sample
+```
+
+#### 2. CSVからのデータ投入
+
+```bash
+# 企業マスターデータの投入
+python -m scripts.init_companies --csv companies.csv
+
+# 財務データの投入
+python -m scripts.fetch_financials --csv financials.csv
+
+# 株価データの投入
+python -m scripts.fetch_stock_prices --csv stock_prices.csv
+
+# 財務指標の計算
+python -m scripts.calculate_indicators
+```
+
+#### 3. Yahoo Financeからの株価取得
+
+```bash
+# 全企業の株価を過去1年分取得
+python -m scripts.fetch_stock_prices --yahoo \
+  --start-date 2024-01-01 \
+  --end-date 2024-12-31 \
+  --rate-limit-delay 0.5  # APIレート制限の間隔（秒）
+```
+
+#### 4. Dockerを使用したデータ投入
+
+```bash
+# プロジェクトルートで実行
+
+# サンプルデータ生成と投入
+docker compose run --rm init_data python -m scripts.init_companies --generate-sample
+docker compose run --rm init_data python -m scripts.init_companies --csv companies_sample.csv
+
+docker compose run --rm init_data python -m scripts.fetch_financials --generate-sample
+docker compose run --rm init_data python -m scripts.fetch_financials --csv financials_sample.csv
+
+docker compose run --rm init_data python -m scripts.fetch_stock_prices --generate-sample
+docker compose run --rm init_data python -m scripts.fetch_stock_prices --csv stock_prices_sample.csv
+
+# 財務指標の計算
+docker compose run --rm init_data python -m scripts.calculate_indicators
+```
+
+### CSVフォーマット
+
+#### companies.csv
+
+```csv
+ticker_symbol,edinet_code,company_name_jp,company_name_en,market_division,industry_code,industry_name,market_cap,shares_outstanding,fiscal_year_end,employee_count,website_url,description
+7201,E01234,日産自動車株式会社,Nissan Motor Co. Ltd.,Prime,5010,自動車製造業,1500000000000,100000000,03-31,20000,https://www.nissan.co.jp,自動車メーカー
+```
+
+必須フィールド: `ticker_symbol`, `company_name_jp`
+
+#### financials.csv
+
+```csv
+ticker_symbol,fiscal_year,fiscal_quarter,period_start,period_end,revenue,cost_of_revenue,gross_profit,operating_income,net_income,total_assets,current_assets,total_liabilities,current_liabilities,shareholders_equity,operating_cash_flow,investing_cash_flow,financing_cash_flow,free_cash_flow
+7201,2024,1,2024-01-01,2024-03-31,250000000000,150000000000,100000000000,20000000000,15000000000,800000000000,300000000000,500000000000,200000000000,300000000000,18000000000,-5000000000,-3000000000,13000000000
+```
+
+必須フィールド: `ticker_symbol`, `fiscal_year`, `period_end`
+
+#### stock_prices.csv
+
+```csv
+ticker_symbol,date,open_price,high_price,low_price,close_price,adjusted_close,volume,data_source
+7201,2024-01-04,1050.0,1080.0,1040.0,1070.0,1070.0,12500000,yahoo_finance
+```
+
+必須フィールド: `ticker_symbol`, `date`
+
+### トラブルシューティング
+
+**問題**: `Company not found` エラー
+
+**解決策**: 企業マスターデータを先に投入してください
+```bash
+python -m scripts.init_companies --csv companies.csv
+```
+
+**問題**: Rate limit exceeded (Yahoo Finance)
+
+**解決策**: `--rate-limit-delay` の値を増やしてください
+```bash
+python -m scripts.fetch_stock_prices --yahoo --rate-limit-delay 1.0
+```
+
+**問題**: データの重複
+
+**解決策**: デフォルトで重複はスキップされます。強制的に挿入する場合は `--allow-duplicates` フラグを使用してください
+
+### データ品質チェック
+
+すべてのスクリプトは実行後に以下の統計を出力します:
+
+- 処理レコード数
+- 成功数
+- エラー数
+- 重複スキップ数
+- バリデーション失敗数
+
+ログは `data_initialization.log` ファイルにも保存されます。
+
 ## テスト
 
 ### テスト実行
