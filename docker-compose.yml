@@ -62,6 +62,8 @@ services:
       API_RATE_LIMIT_PER_DAY: ${API_RATE_LIMIT_PER_DAY:-10000}
       # Security headers
       SECURITY_HEADERS_ENABLED: ${SECURITY_HEADERS_ENABLED:-true}
+      # Yahoo Finance settings
+      USE_FIXTURES_IN_DEV: ${USE_FIXTURES_IN_DEV:-false}
       # API Keys (if needed)
       EDINET_API_KEY: ${EDINET_API_KEY:-}
       JPX_API_KEY: ${JPX_API_KEY:-}

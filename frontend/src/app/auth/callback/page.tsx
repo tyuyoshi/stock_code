@@ -24,7 +24,9 @@ export default function AuthCallbackPage() {
     };
 
     handleCallback();
-  }, [searchParams, router, refreshUser]);
+    // Run only once on mount - searchParams and router are stable, refreshUser is now memoized
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

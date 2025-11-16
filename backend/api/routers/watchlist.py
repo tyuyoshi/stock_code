@@ -1,13 +1,16 @@
-from typing import List
+from typing import List, Dict, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session, joinedload
+from redis import Redis
 
 from core.database import get_db
 from core.auth import get_current_user
 from core.rate_limiter import limiter, RateLimits
+from core.dependencies import get_redis_client
 from models.user import User
 from models.watchlist import Watchlist, WatchlistItem
 from models.company import Company
+from services.yahoo_finance_client import YahooFinanceClient
 from schemas.watchlist import (
     WatchlistCreate,
     WatchlistUpdate,
@@ -125,7 +128,7 @@ async def get_watchlist(
     watchlist = (
         db.query(Watchlist)
         .filter(Watchlist.id == watchlist_id)
-        .options(joinedload(Watchlist.items))
+        .options(joinedload(Watchlist.items).joinedload(WatchlistItem.company))
         .first()
     )
     if not watchlist:
@@ -253,3 +256,42 @@ async def remove_stock_from_watchlist(
 
     db.delete(watchlist_item)
     db.commit()
+
+
+@router.get("/{watchlist_id}/prices", response_model=Dict[str, Optional[Dict[str, Any]]])
+@limiter.limit(RateLimits.STANDARD)
+async def get_watchlist_prices(
+    request: Request,
+    watchlist_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis_client),
+):
+    """Fetch current prices for all stocks in a watchlist"""
+    watchlist = (
+        db.query(Watchlist)
+        .filter(Watchlist.id == watchlist_id)
+        .options(joinedload(Watchlist.items).joinedload(WatchlistItem.company))
+        .first()
+    )
+    if not watchlist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist not found"
+        )
+    if watchlist.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this watchlist",
+        )
+
+    # Extract ticker symbols from watchlist items
+    ticker_symbols = [item.ticker_symbol for item in watchlist.items]
+
+    if not ticker_symbols:
+        return {}
+
+    # Fetch prices using Yahoo Finance client
+    yahoo_client = YahooFinanceClient(redis_client)
+    prices = await yahoo_client.bulk_fetch_prices(ticker_symbols)
+
+    return prices

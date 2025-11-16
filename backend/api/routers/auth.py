@@ -161,6 +161,8 @@ async def google_callback(
         redirect_response.set_cookie(
             key=settings.session_cookie_name,
             value=session_token,
+            domain=settings.session_cookie_domain,
+            path=settings.session_cookie_path,
             httponly=settings.session_cookie_httponly,
             secure=settings.session_cookie_secure,
             samesite=settings.session_cookie_samesite,
@@ -214,6 +216,49 @@ async def update_profile(
     return UserResponse.model_validate(current_user)
 
 
+@router.get("/ws-token")
+@limiter.limit(RateLimits.STANDARD)
+async def get_websocket_token(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis_client),
+):
+    """Generate a short-lived token for WebSocket authentication
+
+    This endpoint generates a one-time-use token that is valid for 60 seconds.
+    The token is required for WebSocket connections to authenticate the user.
+
+    Returns:
+        {
+            "ws_token": "random-token-string",
+            "expires_in": 60
+        }
+    """
+    import secrets
+
+    if not redis_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session service unavailable",
+        )
+
+    # Generate random token
+    ws_token = secrets.token_urlsafe(32)
+
+    # Store in Redis with 60-second TTL
+    redis_key = f"ws_token:{ws_token}"
+    redis_client.setex(
+        redis_key,
+        60,  # 60 seconds
+        str(current_user.id)  # Store user ID
+    )
+
+    return {
+        "ws_token": ws_token,
+        "expires_in": 60
+    }
+
+
 @router.post("/logout", response_model=LogoutResponse)
 @limiter.limit(RateLimits.STANDARD)
 async def logout(
@@ -235,6 +280,10 @@ async def logout(
 
     delete_session(session_token, redis_client)
 
-    response.delete_cookie(key=settings.session_cookie_name)
+    response.delete_cookie(
+        key=settings.session_cookie_name,
+        domain=settings.session_cookie_domain,
+        path=settings.session_cookie_path
+    )
 
     return LogoutResponse(message="Logout successful")
