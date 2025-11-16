@@ -102,12 +102,32 @@ When asked to audit project management:
 - **GitHub Project Board**: https://github.com/users/tyuyoshi/projects/5
 - **Repository**: https://github.com/tyuyoshi/stock_code
 
-## Success Metrics (2025/11/09)
+## Milestones (2025/11/16)
 
+**Status**: 3 active milestones established
+
+1. **MVP - Production Launch** (Due: 2025/12/31) - 7 issues
+   - #23, #24, #150, #149, #100, #90, #139
+2. **Cloud Infrastructure - Phase 1** (Due: 2025/12/15) - 4 issues
+   - #136, #137, #138, #4
+3. **Monetization & Growth** (Due: 2026/03/31) - 4 issues
+   - #148, #118, #51, #77
+
+All 15 milestone issues are tracked in Project #5.
+
+## Success Metrics
+
+**2025/11/09**: Project Cleanup
 - ✅ 32 untracked issues added to project board
-- ✅ 100% of open issues now tracked in project
+- ✅ 100% of open issues tracked in project
 - ✅ Workflow documented in CLAUDE.md
 - ✅ Memory created for future sessions
+
+**2025/11/16**: Milestone Setup
+- ✅ 3 milestones created (MVP, Infrastructure, Monetization)
+- ✅ 15 issues assigned to milestones with priorities
+- ✅ 1 duplicate issue closed (#151 → #23)
+- ✅ Clear 8-week roadmap to Production launch
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 Co-Authored-By: Claude <noreply@anthropic.com>

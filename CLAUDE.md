@@ -182,7 +182,8 @@ npm run build           # Production build
 
 - **Repository**: https://github.com/tyuyoshi/stock_code
 - **Project Board**: https://github.com/users/tyuyoshi/projects/5
-- **Total Issues**: 152 (86 open, 66 closed)
+- **Total Issues**: 152 (85 open, 67 closed)
+- **Milestones**: 3 active (MVP, Infrastructure, Monetization)
 
 ### Issue Management Guidelines
 
@@ -274,17 +275,33 @@ See deployment section below for full infrastructure plan.
 
 ## Active Development Priorities
 
-**Phase 1: Frontend Real-time Features** (Week 1-2) 🔥
-- Issue #123: Frontend WebSocket Client - COMPLETED ✅
-- Issue #118: Portfolio analysis API
+**Milestones Established (2025/11/16)**:
 
-**Phase 2: Core Frontend Pages** (Weeks 3-5) 🔥
-- Issue #23: Company Details Page - Ready to start
-- Issue #24: Screening Interface - Ready to start
+1. **MVP - Production Launch** (Due: 2025/12/31) - 7 issues
+2. **Cloud Infrastructure - Phase 1** (Due: 2025/12/15) - 4 issues
+3. **Monetization & Growth** (Due: 2026/03/31) - 4 issues
 
-**Phase 3: Quality & Compliance** (Week 6) ⚡
-- Issue #100: Audit logging - Export operations, compliance
-- Issue #90: Test coverage 78% → 90%+
+### Week 1-2: MVP Development (最優先)
+
+- #149: 初期企業データ1000社投入 [high-priority, MVP milestone]
+- #23: 企業詳細ページ実装 [high-priority, MVP milestone]
+- #24: スクリーニング画面実装 [high-priority, MVP milestone]
+- #150: 企業検索ページ実装 [medium-priority, MVP milestone]
+
+### Week 3-4: Quality & Compliance
+
+- #90: テストカバレッジ90%+ [high-priority, MVP milestone]
+- #100: 監査ログ実装 [high-priority, MVP milestone]
+
+### Week 5-6: Infrastructure & Deployment
+
+- #136-138, #4: GCPインフラ構築 [high-priority, Infrastructure milestone]
+- #139: CI/CDパイプライン構築 [high-priority, MVP milestone]
+
+### Week 7-8: Production Launch
+
+- Staging環境テスト
+- Production環境公開
 
 ## Docker Safe Operation Guidelines ⚠️
 
@@ -351,34 +368,42 @@ See `backend/README.md` for detailed documentation.
 
 ### Deployment Issues Created
 
-**Phase 1: Critical Infrastructure** (~$23-33/month)
+### Phase 1: Critical Infrastructure
+
+(~$23-33/month)
+
 - **#136**: Cloud SQL (PostgreSQL) - $7-9/month
 - **#137**: Redis Memorystore - $6-12/month
 - **#138**: Secret Manager - $0/month
 - **#4**: Cloud Run (Backend API) - $8-10/month
 
-**Phase 2: DevOps & Observability**
+### Phase 2: DevOps & Observability
+
 - **#139**: CI/CD Pipeline (Cloud Build + GitHub Actions) - ~$0.50/month
 - **#140**: Monitoring & Logging - $0-2/month
 
-**Phase 3: Cost Optimization** (Future)
+### Phase 3: Cost Optimization
+
+(Future)
+
 - **#141**: Budget alerts, resource optimization
 
 **Total Estimated Cost**: $23-34/month
 
 ### Infrastructure Stack (Terraform-managed)
 
-**Compute**: Cloud Run, Cloud Scheduler, Cloud Build + GitHub Actions
-**Data**: Cloud SQL (PostgreSQL), Redis Memorystore, Cloud Storage
-**Security**: Secret Manager, Cloud Logging, Cloud Monitoring, Error Reporting
-**Networking**: VPC peering, Cloud CDN (future), Cloud Armor (future)
+- **Compute**: Cloud Run, Cloud Scheduler, Cloud Build + GitHub Actions
+- **Data**: Cloud SQL (PostgreSQL), Redis Memorystore, Cloud Storage
+- **Security**: Secret Manager, Cloud Logging, Cloud Monitoring, Error Reporting
+- **Networking**: VPC peering, Cloud CDN (future), Cloud Armor (future)
 
 ### Timeline & Rationale
 
-**Current**: Development environment only
-**Deploy**: After MVP features complete (Issues #23, #24, #90, #100)
+- **Current**: Development environment only
+- **Deploy**: After MVP features complete (Issues #23, #24, #90, #100)
 
 **Rationale**:
+
 - 🚀 Faster time-to-market: Features before infrastructure
 - 📊 Data-driven decisions: User feedback before scaling
 - 💰 Cost efficiency: Avoid premature infrastructure spend
@@ -386,8 +411,8 @@ See `backend/README.md` for detailed documentation.
 
 ### Risk Mitigation
 
-**Risks**: No staging, no DR, no HA initially (acceptable for MVP)
-**Mitigations**: 78% test coverage, monitoring & alerting, easy rollback (Cloud Run revisions, Terraform state)
+- **Risks**: No staging, no DR, no HA initially (acceptable for MVP)
+- **Mitigations**: 78% test coverage, monitoring & alerting, easy rollback (Cloud Run revisions, Terraform state)
 
 ---
 
