@@ -22,12 +22,15 @@ import {
 import type { StockPrice } from "@/types/company";
 
 type ChartPeriod = "1d" | "5d" | "1mo" | "3mo" | "6mo" | "1y" | "2y" | "5y";
+type ChartInterval = "5m" | "15m" | "1h" | "1d";
 
 interface StockPriceChartProps {
   data: StockPrice[];
   ticker: string;
   onPeriodChange?: (period: ChartPeriod) => void;
   currentPeriod?: ChartPeriod;
+  onIntervalChange?: (interval: ChartInterval | undefined) => void;
+  currentInterval?: ChartInterval;
 }
 
 export function StockPriceChart({
@@ -35,6 +38,8 @@ export function StockPriceChart({
   ticker,
   onPeriodChange,
   currentPeriod = "1mo",
+  onIntervalChange,
+  currentInterval,
 }: StockPriceChartProps) {
   const [chartType, setChartType] = useState<"line" | "area">("area");
 
@@ -49,17 +54,48 @@ export function StockPriceChart({
     { value: "5y", label: "5年" },
   ];
 
+  const intervals: { value: ChartInterval; label: string }[] = [
+    { value: "5m", label: "5分" },
+    { value: "15m", label: "15分" },
+    { value: "1h", label: "1時間" },
+    { value: "1d", label: "日足" },
+  ];
+
+  // Determine if data contains timestamps (intraday) or dates (daily)
+  const isIntradayData = data.length > 0 && !!data[0].timestamp;
+
   // Format data for Recharts
-  const chartData = data.map((price) => ({
-    date: new Date(price.date).toLocaleDateString("ja-JP", {
-      month: "short",
-      day: "numeric",
-    }),
-    price: price.close_price,
-    high: price.high_price,
-    low: price.low_price,
-    volume: price.volume,
-  }));
+  const chartData = data.map((price) => {
+    const dateTime = price.timestamp || price.date;
+    let formattedDate: string;
+
+    if (isIntradayData && price.timestamp) {
+      // Intraday data: show time
+      const dt = new Date(price.timestamp);
+      formattedDate = dt.toLocaleTimeString("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } else if (price.date) {
+      // Daily data: show date
+      const dt = new Date(price.date);
+      formattedDate = dt.toLocaleDateString("ja-JP", {
+        month: "short",
+        day: "numeric",
+      });
+    } else {
+      formattedDate = "";
+    }
+
+    return {
+      date: formattedDate,
+      rawDate: dateTime,
+      price: price.close,
+      high: price.high,
+      low: price.low,
+      volume: price.volume,
+    };
+  });
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
@@ -92,55 +128,88 @@ export function StockPriceChart({
     return null;
   };
 
+  // Show interval selector only for short periods (1d, 5d)
+  const showIntervalSelector = currentPeriod === "1d" || currentPeriod === "5d";
+
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center justify-between">
-        {/* Period selector */}
-        <div className="flex gap-2">
-          {periods.map((period) => (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          {/* Period selector */}
+          <div className="flex gap-2">
+            {periods.map((period) => (
+              <button
+                key={period.value}
+                onClick={() => {
+                  onPeriodChange?.(period.value);
+                  // Reset interval when changing to longer periods
+                  if (period.value !== "1d" && period.value !== "5d") {
+                    onIntervalChange?.(undefined);
+                  }
+                }}
+                className={`rounded px-3 py-1 text-sm transition-colors ${
+                  currentPeriod === period.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Chart type selector */}
+          <div className="flex gap-2">
             <button
-              key={period.value}
-              onClick={() => onPeriodChange?.(period.value)}
+              onClick={() => setChartType("line")}
               className={`rounded px-3 py-1 text-sm transition-colors ${
-                currentPeriod === period.value
+                chartType === "line"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {period.label}
+              折れ線
             </button>
-          ))}
+            <button
+              onClick={() => setChartType("area")}
+              className={`rounded px-3 py-1 text-sm transition-colors ${
+                chartType === "area"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              エリア
+            </button>
+          </div>
         </div>
 
-        {/* Chart type selector */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setChartType("line")}
-            className={`rounded px-3 py-1 text-sm transition-colors ${
-              chartType === "line"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            折れ線
-          </button>
-          <button
-            onClick={() => setChartType("area")}
-            className={`rounded px-3 py-1 text-sm transition-colors ${
-              chartType === "area"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            エリア
-          </button>
-        </div>
+        {/* Interval selector - only shown for 1d and 5d periods */}
+        {showIntervalSelector && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">時間間隔:</span>
+            <div className="flex gap-2">
+              {intervals.map((interval) => (
+                <button
+                  key={interval.value}
+                  onClick={() => onIntervalChange?.(interval.value)}
+                  className={`rounded px-3 py-1 text-sm transition-colors ${
+                    currentInterval === interval.value
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {interval.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chart */}
-      <div className="h-96 w-full">
-        {chartData.length > 0 ? (
+      {chartData.length > 0 && (
+        <div className="h-96 w-full">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === "area" ? (
               <AreaChart
@@ -204,12 +273,8 @@ export function StockPriceChart({
               </LineChart>
             )}
           </ResponsiveContainer>
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-gray-500">チャートデータがありません</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Stats */}
       {chartData.length > 0 && (

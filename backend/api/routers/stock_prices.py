@@ -1,7 +1,7 @@
 """Stock Prices API Endpoints"""
 
-from datetime import datetime, date, timedelta
-from typing import List, Optional
+from datetime import datetime, date as DateType, timedelta
+from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -22,7 +22,7 @@ class StockPriceResponse(BaseModel):
     id: int
     company_id: int
     ticker_symbol: str
-    date: date
+    date: DateType
     open_price: Optional[float] = None
     high_price: Optional[float] = None
     low_price: Optional[float] = None
@@ -54,7 +54,8 @@ class LatestPriceResponse(BaseModel):
 
 class ChartDataPoint(BaseModel):
     """Chart data point model"""
-    date: date
+    date: Optional[DateType] = None  # For daily data
+    timestamp: Optional[datetime] = None  # For intraday data
     open: Optional[float] = None
     high: Optional[float] = None
     low: Optional[float] = None
@@ -66,6 +67,7 @@ class ChartDataResponse(BaseModel):
     """Chart data response model"""
     ticker_symbol: str
     period: str
+    interval: Optional[str] = "1d"
     data: List[ChartDataPoint]
     data_source: str = "database"
 
@@ -162,8 +164,8 @@ async def get_latest_stock_price(
 async def get_historical_stock_prices(
     ticker: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to retrieve"),
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: Optional[DateType] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[DateType] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
     """Get historical stock prices for a ticker"""
@@ -228,63 +230,133 @@ async def get_historical_stock_prices(
 @router.get("/{ticker}/chart", response_model=ChartDataResponse)
 async def get_chart_data(
     ticker: str,
-    period: str = Query("1mo", regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$", description="Chart period"),
-    db: Session = Depends(get_db)
+    period: Optional[str] = Query(None, regex="^(1d|5d|1mo|3mo|6mo|1y|2y|5y)$", description="Chart period (auto-selected if not specified)"),
+    interval: Optional[str] = Query(None, regex="^(5m|15m|1h|1d)$", description="Data interval (5m, 15m, 1h, 1d)"),
+    db: Session = Depends(get_db),
+    yahoo_client: YahooFinanceClient = Depends(get_yahoo_finance_client)
 ):
-    """Get chart data for a ticker"""
-    
+    """Get chart data for a ticker
+
+    For intraday intervals (5m, 15m, 1h), data is fetched from Yahoo Finance.
+    For daily interval (1d) or when interval is not specified, data is from database.
+
+    Period auto-selection (when period=None):
+    - 1m interval: 1d period
+    - 5m/15m interval: 5d period (weekend-safe)
+    - 1h interval: 1mo period
+    """
+
     # Verify ticker exists
     company = db.query(Company).filter(Company.ticker_symbol == ticker).first()
     if not company:
         raise HTTPException(status_code=404, detail=f"Company with ticker {ticker} not found")
-    
-    # Calculate date range based on period
-    end_date = datetime.now().date()
-    
-    period_days = {
-        "1d": 1,
-        "5d": 5,
-        "1mo": 30,
-        "3mo": 90,
-        "6mo": 180,
-        "1y": 365,
-        "2y": 730,
-        "5y": 1825
-    }
-    
-    days = period_days.get(period, 30)
-    start_date = end_date - timedelta(days=days)
-    
-    # Get price data
-    prices = db.query(StockPrice).filter(
-        StockPrice.company_id == company.id,
-        StockPrice.date >= start_date,
-        StockPrice.date <= end_date
-    ).order_by(StockPrice.date).all()
-    
-    if not prices:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No chart data found for {ticker} in period {period}"
+
+    # Determine if we should fetch intraday data
+    fetch_intraday = interval and interval in ["5m", "15m", "1h"]
+
+    if fetch_intraday:
+        # Fetch intraday data from Yahoo Finance
+        # period=None triggers intelligent period selection in yahoo_client
+        intraday_data = await yahoo_client.get_intraday_data(
+            ticker_symbol=ticker,
+            interval=interval,
+            period=period,  # None for auto-selection, or user-specified value
+            use_cache=True
         )
-    
-    # Convert to chart data points
-    chart_data = []
-    for price in prices:
-        chart_data.append(ChartDataPoint(
-            date=price.date,
-            open=price.open_price,
-            high=price.high_price,
-            low=price.low_price,
-            close=price.close_price,
-            volume=price.volume
-        ))
-    
-    return ChartDataResponse(
-        ticker_symbol=ticker,
-        period=period,
-        data=chart_data
-    )
+
+        if not intraday_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No intraday chart data found for {ticker} (interval={interval}, period={period})"
+            )
+
+        # Convert to chart data points
+        chart_data = []
+        for data_point in intraday_data:
+            # Parse timestamp string to datetime
+            timestamp_str = data_point.get('timestamp')
+            if timestamp_str:
+                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+            else:
+                continue
+
+            chart_data.append(ChartDataPoint(
+                timestamp=timestamp,
+                open=data_point.get('open_price'),
+                high=data_point.get('high_price'),
+                low=data_point.get('low_price'),
+                close=data_point.get('close_price'),
+                volume=data_point.get('volume')
+            ))
+
+        return ChartDataResponse(
+            ticker_symbol=ticker,
+            period=period,
+            interval=interval,
+            data=chart_data,
+            data_source="yahoo_finance"
+        )
+
+    else:
+        # Fetch daily data from database
+        end_date = datetime.now().date()
+
+        # Default period for daily data if not specified
+        if period is None:
+            period = "1mo"
+
+        # Special handling for 1d period to work on weekends/holidays
+        if period == "1d":
+            # Get the most recent trading day (last available data)
+            prices = db.query(StockPrice).filter(
+                StockPrice.company_id == company.id
+            ).order_by(desc(StockPrice.date)).limit(1).all()
+        else:
+            period_days = {
+                "5d": 5,
+                "1mo": 30,
+                "3mo": 90,
+                "6mo": 180,
+                "1y": 365,
+                "2y": 730,
+                "5y": 1825
+            }
+
+            days = period_days.get(period, 30)
+            start_date = end_date - timedelta(days=days)
+
+            # Get price data
+            prices = db.query(StockPrice).filter(
+                StockPrice.company_id == company.id,
+                StockPrice.date >= start_date,
+                StockPrice.date <= end_date
+            ).order_by(StockPrice.date).all()
+
+        if not prices:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No chart data found for {ticker} in period {period}"
+            )
+
+        # Convert to chart data points
+        chart_data = []
+        for price in prices:
+            chart_data.append(ChartDataPoint(
+                date=price.date,
+                open=price.open_price,
+                high=price.high_price,
+                low=price.low_price,
+                close=price.close_price,
+                volume=price.volume
+            ))
+
+        return ChartDataResponse(
+            ticker_symbol=ticker,
+            period=period,
+            interval=interval or "1d",
+            data=chart_data,
+            data_source="database"
+        )
 
 
 @router.get("/", response_model=List[StockPriceResponse])

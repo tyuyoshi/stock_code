@@ -18,7 +18,7 @@ tqdm==4.66.3
 
 # API clients
 requests==2.32.4
-yfinance==0.2.33
+yfinance==0.2.49
 aiohttp==3.12.14
 
 # Authentication

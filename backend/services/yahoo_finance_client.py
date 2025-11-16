@@ -446,3 +446,107 @@ class YahooFinanceClient:
         
         logger.info(f"Successfully fetched prices for {len([v for v in price_data.values() if v])} out of {len(ticker_symbols)} tickers")
         return price_data
+
+    async def get_intraday_data(
+        self,
+        ticker_symbol: str,
+        interval: str = "1h",
+        period: Optional[str] = None,
+        use_cache: bool = True
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Fetch intraday stock price data from Yahoo Finance
+
+        Args:
+            ticker_symbol: Stock ticker symbol (e.g., "7203")
+            interval: Data interval - "1m", "5m", "15m", "1h" (default: "1h")
+            period: Time period - "1d", "5d", "1mo", etc.
+                   If None, automatically selects optimal period based on interval:
+                   - 1m: 1d (最大約390ポイント)
+                   - 5m/15m: 5d (土日対応、約130-390ポイント)
+                   - 1h: 1mo (約120ポイント)
+            use_cache: Whether to use cached data (default: True)
+
+        Returns:
+            List of intraday price data points or None if error
+        """
+        # Intelligent period selection based on interval
+        if period is None:
+            period_map = {
+                "1m": "1d",   # 1-minute: 1 day (~390 points)
+                "5m": "5d",   # 5-minute: 5 days (~390 points, weekend-safe)
+                "15m": "5d",  # 15-minute: 5 days (~130 points, weekend-safe)
+                "1h": "1mo"   # 1-hour: 1 month (~120 points)
+            }
+            period = period_map.get(interval, "5d")
+            logger.info(f"Auto-selected period='{period}' for interval='{interval}'")
+        formatted_ticker = self._format_ticker(ticker_symbol)
+
+        # Check rate limit
+        if self.rate_limiter:
+            allowed = await self.rate_limiter.acquire()
+            if not allowed:
+                logger.warning(f"Rate limit exceeded for intraday data: {formatted_ticker}")
+                return None
+
+        # Check cache
+        cache_key = self._get_cache_key(formatted_ticker, f"intraday_{interval}_{period}")
+        if use_cache:
+            cached_data = await self._get_cached_data(cache_key)
+            if cached_data and 'data' in cached_data:
+                logger.info(f"Returning cached intraday data for {formatted_ticker} ({interval}/{period})")
+                return cached_data['data']
+
+        try:
+            logger.info(f"Fetching intraday data for {formatted_ticker} (interval={interval}, period={period})")
+
+            # Fetch data from Yahoo Finance
+            ticker = yf.Ticker(formatted_ticker)
+
+            # Validate interval
+            valid_intervals = ["1m", "5m", "15m", "1h"]
+            if interval not in valid_intervals:
+                logger.error(f"Invalid interval: {interval}. Must be one of {valid_intervals}")
+                return None
+
+            # Fetch historical data with specific interval
+            hist = ticker.history(interval=interval, period=period)
+
+            if hist.empty:
+                logger.warning(f"No intraday data found for {formatted_ticker}")
+                return None
+
+            # Convert to list of dictionaries
+            intraday_data = []
+            for timestamp, row in hist.iterrows():
+                data_point = {
+                    "ticker": ticker_symbol,
+                    "timestamp": timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    "interval": interval,
+                    "open_price": float(row['Open']) if not pd.isna(row['Open']) else None,
+                    "high_price": float(row['High']) if not pd.isna(row['High']) else None,
+                    "low_price": float(row['Low']) if not pd.isna(row['Low']) else None,
+                    "close_price": float(row['Close']) if not pd.isna(row['Close']) else None,
+                    "volume": float(row['Volume']) if not pd.isna(row['Volume']) else None,
+                }
+                intraday_data.append(data_point)
+
+            # Cache the data (shorter TTL for intraday)
+            if self.redis_client and intraday_data:
+                import json
+                cache_ttl = 60  # 1 minute cache for intraday data
+                if interval == "1h":
+                    cache_ttl = 300  # 5 minutes for hourly data
+
+                cache_value = {"data": intraday_data, "timestamp": datetime.now().isoformat()}
+                self.redis_client.setex(
+                    cache_key,
+                    cache_ttl,
+                    json.dumps(cache_value, default=str)
+                )
+
+            logger.info(f"Successfully fetched {len(intraday_data)} intraday data points for {formatted_ticker}")
+            return intraday_data
+
+        except Exception as e:
+            logger.error(f"Failed to fetch intraday data for {formatted_ticker}: {e}")
+            return None

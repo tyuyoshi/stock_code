@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/layout";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -20,46 +21,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b">
-        <div className="container flex h-16 items-center px-4">
-          <div className="mr-8 flex items-center space-x-2">
-            <span className="text-xl font-bold">Stock Code</span>
-          </div>
-          <nav className="flex items-center space-x-6 text-sm font-medium flex-1">
-            {user && (
-              <>
-                <Link href="/companies" className="hover:text-primary">
-                  企業検索
-                </Link>
-                <Link href="/screening" className="hover:text-primary">
-                  スクリーニング
-                </Link>
-                <Link href="/watchlist" className="hover:text-primary">
-                  ウォッチリスト
-                </Link>
-              </>
-            )}
-          </nav>
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {user.email}
-                </span>
-                <Button variant="outline" onClick={logout}>
-                  ログアウト
-                </Button>
-              </>
-            ) : (
-              <Button asChild>
-                <a href={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google/login`}>
-                  Googleでログイン
-                </a>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="flex-1">
         <section className="container px-4 py-24 md:py-32">

@@ -10,25 +10,43 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { use } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { companyApi } from "@/lib/api/companies";
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { StockPriceChart, FinancialTrendChart } from "@/components/companies";
+import { Header } from "@/components/layout";
+import { useHash } from "@/lib/hooks/useHash";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 };
 
 type TabType = "overview" | "financials" | "chart" | "indicators";
 type ChartPeriod = "1d" | "5d" | "1mo" | "3mo" | "6mo" | "1y" | "2y" | "5y";
+type ChartInterval = "5m" | "15m" | "1h" | "1d";
 
 export default function CompanyDetailPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
   const companyId = parseInt(id, 10);
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const hash = useHash();
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("1mo");
+  const [chartInterval, setChartInterval] = useState<ChartInterval | undefined>(undefined);
+
+  // Define tabs
+  const tabs = [
+    { id: "overview" as TabType, label: "概要" },
+    { id: "financials" as TabType, label: "財務諸表" },
+    { id: "chart" as TabType, label: "チャート" },
+    { id: "indicators" as TabType, label: "財務指標" },
+  ];
+
+  // Derive active tab from URL hash, default to 'overview'
+  const activeTab = useMemo(() => {
+    if (!hash) return "overview";
+    const isValidTab = tabs.some((t) => t.id === hash);
+    return (isValidTab ? hash : "overview") as TabType;
+  }, [hash]);
 
   // Fetch company data
   const {
@@ -80,8 +98,8 @@ export default function CompanyDetailPage({ params }: Props) {
     isLoading: chartLoading,
     error: chartError,
   } = useQuery({
-    queryKey: ["chartData", company?.ticker_symbol, chartPeriod],
-    queryFn: () => companyApi.getChartData(company!.ticker_symbol, chartPeriod),
+    queryKey: ["chartData", company?.ticker_symbol, chartPeriod, chartInterval],
+    queryFn: () => companyApi.getChartData(company!.ticker_symbol, chartPeriod, chartInterval),
     enabled: !!company?.ticker_symbol && activeTab === "chart",
   });
 
@@ -91,6 +109,23 @@ export default function CompanyDetailPage({ params }: Props) {
       document.title = `${company.company_name_jp} (${company.ticker_symbol}) - Stock Code`;
     }
   }, [company]);
+
+  // Track tab views for analytics (GA4)
+  useEffect(() => {
+    if (company && hash) {
+      // Track tab view as custom event
+      if (typeof window !== "undefined" && (window as any).gtag) {
+        (window as any).gtag("event", "tab_view", {
+          company_id: company.id,
+          company_name: company.company_name_jp,
+          ticker_symbol: company.ticker_symbol,
+          tab_name: hash,
+          page_location: window.location.href,
+          page_title: document.title,
+        });
+      }
+    }
+  }, [company, hash]);
 
   // Show loading state while fetching company
   if (companyLoading) {
@@ -149,16 +184,11 @@ export default function CompanyDetailPage({ params }: Props) {
     return `${value.toLocaleString("ja-JP")}円`;
   };
 
-  const tabs = [
-    { id: "overview" as TabType, label: "概要" },
-    { id: "financials" as TabType, label: "財務諸表" },
-    { id: "chart" as TabType, label: "チャート" },
-    { id: "indicators" as TabType, label: "財務指標" },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 bg-gray-50 py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Company Header */}
         <div className="mb-6 rounded-lg bg-white p-6 shadow">
           <div className="flex items-start justify-between">
@@ -232,12 +262,15 @@ export default function CompanyDetailPage({ params }: Props) {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    window.location.hash = tab.id;
+                  }}
                   className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? "border-blue-500 text-blue-600"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   }`}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
                 >
                   {tab.label}
                 </button>
@@ -349,11 +382,14 @@ export default function CompanyDetailPage({ params }: Props) {
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
                   <p className="mt-4 text-gray-600">財務データを読み込み中...</p>
                 </div>
-              ) : financialsError ? (
-                <p className="text-center text-red-600">
-                  財務データの読み込みに失敗しました
-                </p>
-              ) : financials && financials.financial_statements.length > 0 ? (
+              ) : financialsError || !financials || financials.financial_statements.length === 0 ? (
+                <div className="rounded-lg bg-gray-50 p-8 text-center">
+                  <p className="text-gray-600">財務データがまだありません</p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    データ投入後に財務諸表が表示されます
+                  </p>
+                </div>
+              ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -444,26 +480,18 @@ export default function CompanyDetailPage({ params }: Props) {
                       </tr>
                     </tbody>
                   </table>
-                </div>
-              ) : null}
 
-              {/* Financial Trend Chart */}
-              {financials && financials.financial_statements.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                    財務推移
-                  </h3>
-                  <FinancialTrendChart
-                    data={financials.financial_statements}
-                  />
+                  {/* Financial Trend Chart */}
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                      財務推移
+                    </h3>
+                    <FinancialTrendChart
+                      data={financials.financial_statements}
+                    />
+                  </div>
                 </div>
               )}
-
-              {!financials || financials.financial_statements.length === 0 ? (
-                <p className="text-center text-gray-600">
-                  財務データがありません
-                </p>
-              ) : null}
             </div>
           )}
 
@@ -473,28 +501,46 @@ export default function CompanyDetailPage({ params }: Props) {
               <h2 className="mb-4 text-xl font-bold text-gray-900">
                 株価チャート
               </h2>
-              {chartLoading ? (
-                <div className="py-12 text-center">
+
+              {/* Always show StockPriceChart to preserve period/interval controls */}
+              <StockPriceChart
+                data={chartData?.data || []}
+                ticker={company!.ticker_symbol}
+                currentPeriod={chartPeriod}
+                onPeriodChange={setChartPeriod}
+                currentInterval={chartInterval}
+                onIntervalChange={setChartInterval}
+              />
+
+              {/* Show loading state below chart controls */}
+              {chartLoading && (
+                <div className="mt-4 py-12 text-center">
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
                   <p className="mt-4 text-gray-600">
                     チャートデータを読み込み中...
                   </p>
                 </div>
-              ) : chartError ? (
-                <p className="text-center text-red-600">
-                  チャートデータの読み込みに失敗しました
-                </p>
-              ) : chartData && chartData.data.length > 0 ? (
-                <StockPriceChart
-                  data={chartData.data}
-                  ticker={company!.ticker_symbol}
-                  currentPeriod={chartPeriod}
-                  onPeriodChange={setChartPeriod}
-                />
-              ) : (
-                <p className="text-center text-gray-600">
-                  チャートデータがありません
-                </p>
+              )}
+
+              {/* Show error/no-data message below chart controls */}
+              {!chartLoading && chartError && (
+                (chartError as any)?.response?.status === 404 ? (
+                  <div className="mt-4 rounded-lg bg-gray-50 p-8 text-center">
+                    <p className="text-gray-600">株価データがまだありません</p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      データ投入後に株価チャートが表示されます
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg bg-red-50 p-8 text-center">
+                    <p className="text-red-600">
+                      チャートデータの読み込みに失敗しました
+                    </p>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {(chartError as any)?.message || "エラーが発生しました"}
+                    </p>
+                  </div>
+                )
               )}
             </div>
           )}
@@ -510,11 +556,14 @@ export default function CompanyDetailPage({ params }: Props) {
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
                   <p className="mt-4 text-gray-600">財務指標を読み込み中...</p>
                 </div>
-              ) : indicatorsError ? (
-                <p className="text-center text-red-600">
-                  財務指標の読み込みに失敗しました
-                </p>
-              ) : indicators && Object.keys(indicators.indicators).length > 0 ? (
+              ) : indicatorsError || !indicators || !indicators.indicators || Object.keys(indicators.indicators).length === 0 ? (
+                <div className="rounded-lg bg-gray-50 p-8 text-center">
+                  <p className="text-gray-600">財務指標がまだありません</p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    データ投入後に財務指標が表示されます
+                  </p>
+                </div>
+              ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {/* Profitability */}
                   {indicators.indicators.profitability && (
@@ -631,15 +680,12 @@ export default function CompanyDetailPage({ params }: Props) {
                     </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-center text-gray-600">
-                  財務指標データがありません
-                </p>
               )}
             </div>
           )}
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

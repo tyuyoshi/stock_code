@@ -124,11 +124,12 @@ export interface FinancialIndicatorsResponse {
  * Stock price data point
  */
 export interface StockPrice {
-  date: string;
-  open_price?: number;
-  high_price?: number;
-  low_price?: number;
-  close_price?: number;
+  date?: string; // For daily data
+  timestamp?: string; // For intraday data
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
   volume?: number;
 }
 
@@ -156,5 +157,7 @@ export interface LatestPriceResponse {
 export interface ChartDataResponse {
   ticker_symbol: string;
   period: string;
+  interval?: string;
   data: StockPrice[];
+  data_source?: string;
 }

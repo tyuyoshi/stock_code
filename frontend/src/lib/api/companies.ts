@@ -72,12 +72,13 @@ export const companyApi = {
    */
   getChartData: async (
     ticker: string,
-    period: string = "1mo"
+    period: string = "1mo",
+    interval?: string
   ): Promise<ChartDataResponse> => {
     const response = await apiClient.get<ChartDataResponse>(
       `/api/v1/stock-prices/${ticker}/chart`,
       {
-        params: { period },
+        params: { period, ...(interval && { interval }) },
       }
     );
     return response.data;

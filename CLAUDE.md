@@ -61,9 +61,10 @@ Commit: Implement company details page UI  # Wrong: English commit
 ## Technology Stack
 
 - **Backend**: FastAPI (Python 3.11+), SQLAlchemy, PostgreSQL
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts
 - **Infrastructure**: GCP (Cloud Run, Cloud SQL, Cloud Storage)
-- **Data Processing**: Pandas, NumPy, yfinance
+- **Data Processing**: Pandas, NumPy, yfinance 0.2.49
+- **Time-Series Storage** (Planned): TimescaleDB, GCS Parquet
 - **Containerization**: Docker & Docker Compose
 
 ## Project Structure
@@ -141,15 +142,16 @@ npm run build           # Production build
 11. **Batch Jobs**: Daily stock price auto-update with scheduler (Issue #85)
 12. **Performance**: Database index optimization, 50% query improvement (Issue #88)
 13. **Data Initialization Scripts**: 4 scripts for loading initial company data (Issue #149, PR #157)
+14. **Company Details Page**: Comprehensive company details with intraday stock charts (5m/15m/1h intervals), financial statements, and intelligent period selection (Issue #23, 2025/11/16)
 
 ### In Progress 🔄
-- **Issue #23**: Company Details Page - Ready to start (frontend foundation complete)
 - **Issue #24**: Screening Interface - Ready to start (backend APIs available)
 - **Issue #90**: Test coverage expansion to 90%+ (HIGH PRIORITY)
 - **Issue #100**: Audit logging for exports (HIGH PRIORITY)
 
 ### Planned 📋
-- Chart visualization (Issue #25)
+- **Intraday Data Persistence**: TimescaleDB + GCS 3-tier storage for 5-minute data (Issue #159, HIGH PRIORITY)
+- Chart visualization enhancements (Issue #25)
 - Alert notifications (Issue #51)
 - User analytics (Issue #52)
 - Portfolio analysis API (Issue #118)
@@ -262,10 +264,12 @@ See `.serena/memories/github_workflow_rules.md` for detailed workflow examples.
 - ✅ PR #142: Frontend WebSocket client (2025/11/16)
 - ✅ PR #157: Initial data loading scripts (2025/11/16)
 - ✅ Direct commit: GitHub Actions cost optimization (Draft PR skip, ready_for_review trigger) (2025/11/16)
+- ✅ Issue #23: Company Details Page with intraday charts (5m/15m/1h intervals), intelligent period selection, yfinance 0.2.49 upgrade (2025/11/16)
 
 ### Active Development Focus
 - **Performance & Quality**: Test coverage (Issue #90), Audit logging (Issue #100)
-- **Core Frontend Pages**: Company details (#23), Screening UI (#24)
+- **Core Frontend Pages**: Screening UI (#24)
+- **Data Infrastructure**: Intraday data persistence with TimescaleDB + GCS (#159)
 - **Real-time Features**: Portfolio analysis API (#118), WebSocket monitoring (#124)
 
 ### Deployment Status
@@ -416,6 +420,36 @@ See `backend/README.md` for detailed documentation.
 
 - **Risks**: No staging, no DR, no HA initially (acceptable for MVP)
 - **Mitigations**: 78% test coverage, monitoring & alerting, easy rollback (Cloud Run revisions, Terraform state)
+
+## Intraday Data Storage Strategy (Issue #159)
+
+### Overview
+
+**Status**: Approved, implementation pending after Issue #90 (test coverage)
+**Cost**: $5.67/month average over 5 years
+**Retention**: 10 years, 5-minute granularity for 1000+ companies
+
+### Architecture: 3-Tier Storage
+
+```
+Yahoo Finance API (Daily batch 16:00 JST)
+      ↓
+Redis (Day 0) - $0.38/month
+      ↓ (Daily migration 0:00 JST)
+TimescaleDB (Day 1-30) - $0.09/month
+      ↓ (Monthly export)
+GCS Parquet (Day 31+) - $0.004-0.11/month
+```
+
+**Key Benefits**:
+- **Cost-Effective**: 95% cheaper than PostgreSQL-only ($340 vs $4,590 over 5 years)
+- **Performance-Optimized**: Hot/Warm/Cold tiers based on access patterns
+- **Compression**: TimescaleDB native compression (10-20x) + Parquet (90%)
+- **Scalable**: Supports 1000+ companies with minimal cost increase
+
+**Implementation**: 4-5 days (Phase 1: TimescaleDB setup, Phase 2: Batch jobs, Phase 3: GCS config, Phase 4: Query routing)
+
+**Reference**: See `.serena/memories/intraday_data_storage_strategy.md` for detailed architecture decision
 
 ---
 
