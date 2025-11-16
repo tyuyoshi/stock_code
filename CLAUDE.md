@@ -140,6 +140,7 @@ npm run build           # Production build
 10. **Frontend WebSocket Client**: Real-time UI with auto-reconnection (Issue #123, PR #142)
 11. **Batch Jobs**: Daily stock price auto-update with scheduler (Issue #85)
 12. **Performance**: Database index optimization, 50% query improvement (Issue #88)
+13. **Data Initialization Scripts**: 4 scripts for loading initial company data (Issue #149, PR #157)
 
 ### In Progress 🔄
 - **Issue #23**: Company Details Page - Ready to start (frontend foundation complete)
@@ -259,6 +260,7 @@ See `.serena/memories/github_workflow_rules.md` for detailed workflow examples.
 ### Completed PRs (2025/11 - See archived_sessions_2025_11.md for details)
 - ✅ PR #116: authlib 1.6.5 security update (2025/11/09)
 - ✅ PR #142: Frontend WebSocket client (2025/11/16)
+- ✅ PR #157: Initial data loading scripts (2025/11/16)
 
 ### Active Development Focus
 - **Performance & Quality**: Test coverage (Issue #90), Audit logging (Issue #100)
