@@ -277,57 +277,57 @@ export function StockPriceChart({
       )}
 
       {/* Stats */}
-      {chartData.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 rounded-lg bg-gray-50 p-4">
-          <div>
-            <p className="text-xs text-gray-500">最高値</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">
-              ¥
-              {Math.max(...chartData.map((d) => d.price || 0)).toLocaleString(
-                "ja-JP"
-              )}
-            </p>
+      {(() => {
+        // Filter out null/undefined prices for safe calculations
+        const validPrices = chartData
+          .map((d) => d.price)
+          .filter((p): p is number => p !== null && p !== undefined);
+
+        // Only show stats if we have valid price data
+        if (validPrices.length === 0) {
+          return null;
+        }
+
+        const maxPrice = Math.max(...validPrices);
+        const minPrice = Math.min(...validPrices);
+        const avgPrice = validPrices.reduce((sum, p) => sum + p, 0) / validPrices.length;
+        const changeRate = validPrices.length >= 2
+          ? ((validPrices[validPrices.length - 1] - validPrices[0]) / validPrices[0]) * 100
+          : 0;
+
+        return (
+          <div className="grid grid-cols-4 gap-4 rounded-lg bg-gray-50 p-4">
+            <div>
+              <p className="text-xs text-gray-500">最高値</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                ¥{maxPrice.toLocaleString("ja-JP")}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">最安値</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                ¥{minPrice.toLocaleString("ja-JP")}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">平均</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                ¥{avgPrice.toLocaleString("ja-JP")}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">変化率</p>
+              <p
+                className={`mt-1 text-sm font-semibold ${
+                  changeRate >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {changeRate.toFixed(2)}%
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">最安値</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">
-              ¥
-              {Math.min(
-                ...chartData.map((d) => d.price || Infinity)
-              ).toLocaleString("ja-JP")}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">平均</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">
-              ¥
-              {(
-                chartData.reduce((sum, d) => sum + (d.price || 0), 0) /
-                chartData.length
-              ).toLocaleString("ja-JP")}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">変化率</p>
-            <p
-              className={`mt-1 text-sm font-semibold ${
-                chartData[chartData.length - 1].price! >
-                chartData[0].price!
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
-              {(
-                ((chartData[chartData.length - 1].price! -
-                  chartData[0].price!) /
-                  chartData[0].price!) *
-                100
-              ).toFixed(2)}
-              %
-            </p>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
